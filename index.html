@@ -5966,6 +5966,12 @@ window.closeMenu  = function() {};
       label: 'Primo Dossier',
       desc:  'Premier dossier sauvegard\u00e9',
       img:   'badges/badge_primo_dossier.png'
+    },
+    {
+      id:    'hundred_saves',
+      label: 'Ma\u00eetre GAB',
+      desc:  '100\u00e8me r\u00e9f\u00e9rence unique sauvegard\u00e9e',
+      img:   'badges/badge_maitre_gab.png'
     }
   ];
 
@@ -5986,7 +5992,8 @@ window.closeMenu  = function() {};
     BADGE_DEFINITIONS.forEach(function(def){
       if(store[def.id]&&store[def.id].unlocked)return;
       var unlock=false;
-      if(def.id==='first_save') unlock=_countUniqueSaved()>=1;
+      if(def.id==='first_save')    unlock=_countUniqueSaved()>=1;
+      if(def.id==='hundred_saves') unlock=_countUniqueSaved()>=100;
       if(unlock){
         store[def.id]={unlocked:true,unlockedAt:new Date().toISOString()};
         fresh.push(def);
