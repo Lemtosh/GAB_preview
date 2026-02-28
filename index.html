@@ -6051,12 +6051,17 @@ window.closeMenu  = function() {};
     var orig=window.saveContrat;
     if(typeof orig==='function'){
       window.saveContrat=function(){
+        var countBefore=_countUniqueSaved();
         var r=orig.apply(this,arguments);
-        setTimeout(checkBadges,200);
+        var countAfter=_countUniqueSaved();
+        /* Déclenche uniquement si une nouvelle référence unique vient d'être ajoutée */
+        if(countAfter>countBefore){
+          setTimeout(checkBadges,200);
+        }
         return r;
       };
     }
-    setTimeout(checkBadges,600); // v\u00e9rif initiale au chargement
+    setTimeout(checkBadges,600); // vérif initiale au chargement (refs déjà existantes)
   });
   /* ==================== FIN SYSTÈME SUCCÈS ==================== */
   </script>
