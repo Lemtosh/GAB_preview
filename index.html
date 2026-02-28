@@ -13,13 +13,13 @@
 <title>GAB.</title>
 <style>
     :root{
-      --bg: #ffffff;
+      --bg: #f0f2f5;
       --text: #111;
-      --muted: #666;
+      --muted: #555;
       --card: #ffffff;
-      --border: #ddd;
-      --border2: #eee;
-      --tableBorder: #ccc;
+      --border: #c2c8d4;
+      --border2: #d6dae4;
+      --tableBorder: #b8beca;
       --btnDanger: #ff4444;
       --btnDangerHover: #cc0000;
       --canvasBorder: #eee;
@@ -298,13 +298,13 @@
 :root{
   --accent: #11a9a6;
   --accent2: #0f8f8c;
-  --pageBg1: #f4f5f7;
-  --pageBg2: #ffffff;
-  --cardBg: rgba(255,255,255,0.92);
-  --cardStroke: rgba(17, 24, 39, 0.10);
-  --softStroke: rgba(17, 24, 39, 0.08);
-  --shadowA: 0 10px 30px rgba(17,24,39,0.10);
-  --shadowB: 0 6px 18px rgba(17,24,39,0.08);
+  --pageBg1: #e6e9ee;
+  --pageBg2: #f0f2f5;
+  --cardBg: rgba(255,255,255,0.97);
+  --cardStroke: rgba(17, 24, 39, 0.16);
+  --softStroke: rgba(17, 24, 39, 0.14);
+  --shadowA: 0 10px 30px rgba(17,24,39,0.15);
+  --shadowB: 0 6px 18px rgba(17,24,39,0.12);
   --radiusXL: 22px;
   --radiusL: 18px;
   --radiusM: 14px;
@@ -1652,9 +1652,9 @@ body.dark #btnModeComplexe.toolBtnActive{ color: rgba(255,255,255,0.92) !importa
     }
     /* vLbl en accent quand du texte est saisi */
     .vField:has(input:not(:placeholder-shown)) .vLbl {
-      color:var(--accent);
-      background:color-mix(in oklab,var(--accent) 10%,transparent);
-      border-right-color:color-mix(in oklab,var(--accent) 28%,transparent);
+      color:#fff;
+      background:var(--accent);
+      border-right-color:color-mix(in oklab,#000 20%,var(--accent));
     }
     /* Input interne : annule border-radius:16px et box-shadow globaux */
     .vField input {
@@ -1703,11 +1703,11 @@ body.dark #btnModeComplexe.toolBtnActive{ color: rgba(255,255,255,0.92) !importa
     .vLblSwitch.isFinaux:hover      .vAntecOptFinaux { opacity:1; }
     /* Surbrillance bleue UNIQUEMENT si texte saisi dans déclaré */
     .vField:has(#val_antec_decl:not(:placeholder-shown)) .vLblSwitch {
-      background:color-mix(in oklab,var(--accent) 10%,transparent);
-      border-right-color:color-mix(in oklab,var(--accent) 28%,transparent);
+      background:var(--accent);
+      border-right-color:color-mix(in oklab,#000 20%,var(--accent));
     }
     .vField:has(#val_antec_decl:not(:placeholder-shown)) .vAntecOpt {
-      color:var(--accent);
+      color:#fff;
     }
 
     /* ---- Toggle Supp./Finaux (clone Auto/Moto) ---- */
