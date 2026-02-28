@@ -2185,6 +2185,34 @@ a.topNavBtn:focus {
 #btnWhatsNew { left: 12px !important; }
 /* ══ fin TOP NAV BAR ══ */
 
+
+  /* ==================== POPUP SUCCÈS v1.0 ==================== */
+  #succesPopup{display:none;position:fixed;inset:0;z-index:20000;align-items:center;justify-content:center;background:transparent;height:100vh;overflow:hidden}
+  #succesPopup::before{content:'';position:fixed;inset:0;background:rgba(0,0,0,0.48);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);z-index:-1;pointer-events:none}
+  #succesBox{background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:16px;padding:22px 24px 18px;width:min(680px,calc(100vw - 32px));max-height:82vh;display:flex;flex-direction:column;gap:14px;box-shadow:0 12px 48px rgba(0,0,0,0.30);position:relative;z-index:1;animation:ccIn 0.28s cubic-bezier(.34,1.56,.64,1)}
+  #succesBox h3{margin:0;font-size:14px;font-weight:700;display:flex;align-items:center;gap:8px;flex-shrink:0}
+  .succesCounter{font-size:12px;color:var(--muted);margin-left:auto;font-weight:500;white-space:nowrap}
+  .succesScroll{overflow-y:auto;flex:1;padding-right:4px}
+  .succesGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:16px;padding:4px 2px}
+  .succesBadge{display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 8px 12px;border-radius:12px;border:1px solid var(--border2);background:var(--bg);transition:transform 0.18s,border-color 0.18s}
+  .succesBadge.unlocked{border-color:color-mix(in oklab,#11a9a6 35%,var(--border2))}
+  .succesBadge img{width:88px;height:88px;object-fit:contain;transition:filter 0.2s,transform 0.2s}
+  .succesBadge.locked img{filter:grayscale(1) brightness(0.09) contrast(1.5)}
+  .succesBadge.unlocked:hover{transform:translateY(-2px)}
+  .succesBadge.unlocked:hover img{transform:scale(1.1)}
+  .succesBadgeName{font-size:11px;font-weight:600;text-align:center;line-height:1.3}
+  .succesBadge.locked .succesBadgeName{opacity:0.30}
+  .succesBadgeDate{font-size:10px;color:#11a9a6;font-weight:500;margin-top:1px}
+  #btnSuccesClose{position:absolute;top:14px;right:16px;background:none;border:none;cursor:pointer;font-size:20px;color:var(--muted);line-height:1;padding:0}
+  #btnSuccesClose:hover{color:var(--text)}
+  /* TOAST BADGE */
+  .badgeToast{position:fixed;bottom:72px;right:20px;background:var(--card);color:var(--text);border:1px solid #11a9a6;border-radius:12px;padding:10px 16px 10px 12px;display:flex;align-items:center;gap:12px;box-shadow:0 4px 22px rgba(0,0,0,0.28);z-index:30000;animation:badgeToastIn 0.35s cubic-bezier(.34,1.56,.64,1);max-width:290px;pointer-events:none}
+  .badgeToastImg{width:54px;height:54px;object-fit:contain;flex-shrink:0}
+  .badgeToastTxt{font-size:12px;line-height:1.4}
+  .badgeToastTxt strong{display:block;font-size:13px;margin-bottom:2px;color:#11a9a6}
+  @keyframes badgeToastIn{from{opacity:0;transform:translateX(44px) scale(0.88)}to{opacity:1;transform:translateX(0) scale(1)}}
+  @keyframes badgeToastOut{to{opacity:0;transform:translateX(44px) scale(0.88)}}
+  @media print{#succesPopup,.badgeToast{display:none!important}}
 </style>
 </head>
 <body>
@@ -5831,6 +5859,11 @@ document.addEventListener('DOMContentLoaded',function(){
     <span>Nouveautés</span>
     <span class="menuWhatsNewBadge" id="topNavWhatsNewBadge"></span>
   </button>
+      <!-- Succès -->
+      <button class="topNavBtn" id="menuItemSucces" type="button" onclick="openSucces()">
+        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+        <span>Succ&#232;s</span>
+      </button>
 
 </nav>
 
@@ -5909,5 +5942,123 @@ window.closeMenu  = function() {};
 /* ══ fin TOP NAV ══ */
 
 </script>
+
+  <!-- ==================== POPUP SUCCÈS ==================== -->
+  <div id="succesPopup" role="dialog" aria-modal="true" onclick="if(event.target===this)closeSucces()">
+    <div id="succesBox">
+      <button id="btnSuccesClose" type="button" aria-label="Fermer" onclick="closeSucces()">&times;</button>
+      <h3>
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg>
+        Mes Succ&#232;s
+        <span class="succesCounter" id="succesCounter">0 / 1 d&#233;bloqu&#233;</span>
+      </h3>
+      <div class="succesScroll">
+        <div class="succesGrid" id="succesGrid"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  /* ==================== SYSTÈME SUCCÈS / BADGES GAB v1.0 ==================== */
+  var BADGE_DEFINITIONS = [
+    {
+      id:    'first_save',
+      label: 'Primo Dossier',
+      desc:  'Premier dossier sauvegard\u00e9',
+      img:   'badges/badge_primo_dossier.png'
+    }
+  ];
+
+  function _getBadgeStore(){try{return JSON.parse(localStorage.getItem('gab_badges')||'{}');}catch(e){return {};}}
+  function _saveBadgeStore(b){try{localStorage.setItem('gab_badges',JSON.stringify(b));}catch(e){}}
+
+  function _countUniqueSaved(){
+    var n=0;
+    for(var i=0;i<localStorage.length;i++){
+      var k=localStorage.key(i);
+      if(k&&k.startsWith('gab_contrat_'))n++;
+    }
+    return n;
+  }
+
+  function checkBadges(){
+    var store=_getBadgeStore(), fresh=[];
+    BADGE_DEFINITIONS.forEach(function(def){
+      if(store[def.id]&&store[def.id].unlocked)return;
+      var unlock=false;
+      if(def.id==='first_save') unlock=_countUniqueSaved()>=1;
+      if(unlock){
+        store[def.id]={unlocked:true,unlockedAt:new Date().toISOString()};
+        fresh.push(def);
+      }
+    });
+    _saveBadgeStore(store);
+    if(fresh.length) _showBadgeToast(fresh);
+  }
+
+  function _showBadgeToast(defs){
+    defs.forEach(function(def,i){
+      setTimeout(function(){
+        var el=document.createElement('div');
+        el.className='badgeToast';
+        el.innerHTML='<img class="badgeToastImg" src="'+def.img+'" alt="'+def.label+'">'
+          +'<div class="badgeToastTxt"><strong>&#127942; Badge d\u00e9bloqu\u00e9 !</strong>'+def.label+'<br><small>'+def.desc+'</small></div>';
+        document.body.appendChild(el);
+        setTimeout(function(){
+          el.style.animation='badgeToastOut 0.32s forwards';
+          setTimeout(function(){el.remove();},340);
+        },4200);
+      },i*700);
+    });
+  }
+
+  function openSucces(){
+    _renderSuccesGrid();
+    var p=document.getElementById('succesPopup');
+    if(p){p.style.display='flex';document.body.classList.add('gab-popup-open');}
+  }
+  function closeSucces(){
+    var p=document.getElementById('succesPopup');
+    if(p)p.style.display='none';
+    document.body.classList.remove('gab-popup-open');
+  }
+
+  function _renderSuccesGrid(){
+    var grid=document.getElementById('succesGrid');
+    var ctr=document.getElementById('succesCounter');
+    if(!grid)return;
+    var store=_getBadgeStore(), unlocked=0;
+    grid.innerHTML='';
+    BADGE_DEFINITIONS.forEach(function(def){
+      var b=store[def.id], ok=!!(b&&b.unlocked);
+      if(ok)unlocked++;
+      var card=document.createElement('div');
+      card.className='succesBadge '+(ok?'unlocked':'locked');
+      var dateHtml='';
+      if(ok&&b.unlockedAt){
+        dateHtml='<div class="succesBadgeDate">'+new Date(b.unlockedAt).toLocaleDateString('fr-FR')+'</div>';
+      }
+      card.innerHTML='<img src="'+def.img+'" alt="'+def.label+'">'
+        +'<div class="succesBadgeName">'+def.label+'</div>'+dateHtml;
+      grid.appendChild(card);
+    });
+    if(ctr)ctr.textContent=unlocked+' / '+BADGE_DEFINITIONS.length
+      +' d\u00e9bloqu\u00e9'+(BADGE_DEFINITIONS.length>1?'s':'');
+  }
+
+  /* Hook sur saveContrat pour d\u00e9clencher la v\u00e9rification */
+  document.addEventListener('DOMContentLoaded',function(){
+    var orig=window.saveContrat;
+    if(typeof orig==='function'){
+      window.saveContrat=function(){
+        var r=orig.apply(this,arguments);
+        setTimeout(checkBadges,200);
+        return r;
+      };
+    }
+    setTimeout(checkBadges,600); // v\u00e9rif initiale au chargement
+  });
+  /* ==================== FIN SYSTÈME SUCCÈS ==================== */
+  </script>
 </body>
 </html>
