@@ -601,7 +601,7 @@
 // ════════════════════════════════════════════
 //  CONSTANTES & STORAGE
 // ════════════════════════════════════════════
-const LOCALVERSION = '0.22';
+const LOCALVERSION = '0.22.4';
   const SGP_KEY    = 'gabSGP_imports';
 const THEME_KEY  = 'theme';
 const MAX_DAYS   = 30;
@@ -927,8 +927,7 @@ function exportAndArchive() {
     imp.archivedDate = new Date().toISOString();
     if (!imp.sgpDate)  imp.sgpDate  = getLastFriday().toISOString();
     if (!imp.deadline) imp.deadline = getDeadline().toISOString();
-    imp.exportText = text;
-    history.unshift(imp);
+    imp.exportText = text;\n    // ==> LOT 1: envoi du score SGP vers le GAB (gamification)\\n    try {\\n      const _items = (imp && Array.isArray(imp.items)) ? imp.items : [];\\n      const _total   = _items.length;\\n      const _parfaits = _items.filter(it => it && it.isParfait).length;\\n      const _toTreat  = Math.max(0, _total - _parfaits);\\n      const _pct      = _total ? (_parfaits / _total) * 100 : 0;\\n      window.dispatchEvent(new CustomEvent('sgpgraded', {\\n        detail: {\\n          importId: imp.id,\\n          total: _total,\\n          parfaits: _parfaits,\\n          toTreat: _toTreat,\\n          pct: _pct,\\n          score: _pct,\\n          sgpDate: imp.sgpDate,\\n          archivedDate: imp.archivedDate\\n        }\\n      }));\\n    } catch(e) {}\\nhistory.unshift(imp);
     localStorage.setItem('gabSGP_history', JSON.stringify(history));
     imports = imports.filter(function(i) { return i.id !== imp.id; });
     saveImports(imports);
