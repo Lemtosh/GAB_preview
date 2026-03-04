@@ -2751,7 +2751,7 @@ a.topNavBtn:focus {
 </div>
 <div aria-live="polite" class="tooltip" id="crmTooltip" role="dialog"></div>
 <script>
-    const LOCAL_VERSION = "1.2";
+    const LOCAL_VERSION = "1.2.4.03";
     const VERSION_URL = "https://gist.githubusercontent.com/Lemtosh/ac7fc859fe26f28a17f86fa73c4a4e95/raw/version.json";
     const CHANGELOG_URL = "https://raw.githubusercontent.com/Lemtosh/GAB_preview/refs/heads/main/CHANGELOG.md";
     const CHANGELOG_SEEN_KEY = "gabChangelogSeen";
@@ -2945,7 +2945,12 @@ a.topNavBtn:focus {
       const wrap = document.getElementById('crmTableWrap');
       const isOpen = wrap.style.display === 'flex';
       const willOpen = !isOpen;
-      if (willOpen) closeAllTools('crmTable');
+      if (willOpen) {
+        closeAllTools('crmTable');
+        var _cnt = parseInt(localStorage.getItem('badge_crm_open_count') || '0', 10) + 1;
+        localStorage.setItem('badge_crm_open_count', String(_cnt));
+        setTimeout(checkBadges, 200);
+      }
       setWrapOpen('crmTableWrap','btnCrmTable',willOpen,'Tableau CRM','Tableau CRM', renderCrmTable);
     }
 
@@ -4035,6 +4040,18 @@ ${formatDateFR(deb)} → ${formatDateFR(fin)}`;
         interrupEl.textContent = `Interruption : ${interAuto} mois.`;
       }
     }
+    /* ── Badge frise tracking ── */
+    (function(){
+      try{
+        var _f=0;
+        for(var i=1;i<=20;i++){var d=document.getElementById('deb'+i);if(d&&d.value.trim())_f++;}
+        var _fp=parseInt(localStorage.getItem('badge_frise_count')||'0',10);
+        if(_f>_fp){
+          localStorage.setItem('badge_frise_count',String(_f));
+          if(typeof checkBadges==='function') setTimeout(checkBadges,200);
+        }
+      }catch(e){}
+    })();
 
     function initCanvases(){
       clearCanvas('canvasAuto', 'legendAuto', 'Renseigne une date d’effet pour afficher la frise.');
@@ -4462,7 +4479,27 @@ function setSaveStatus(msg,cls){
   }
 }
 function _fifoClean(){var keys=Object.keys(localStorage).filter(function(k){return k.indexOf(SAVE_PREFIX)===0;});if(keys.length<SAVE_MAX)return;var oldest=null,oldestTs=Infinity;keys.forEach(function(k){try{var d=JSON.parse(localStorage.getItem(k));if(d&&d._ts&&d._ts<oldestTs){oldestTs=d._ts;oldest=k;}}catch(e){}});if(oldest)localStorage.removeItem(oldest);}
-function _saveContrat(num){var data=getFormData(),existing=null;try{existing=JSON.parse(localStorage.getItem(SAVE_PREFIX+num));}catch(e){}var version=existing?((existing._version||0)+1):1;_fifoClean();var payload=JSON.parse(JSON.stringify(data));payload._version=version;payload._ts=Date.now();localStorage.setItem(SAVE_PREFIX+num,JSON.stringify(payload));_sessionHash=_dataHash(payload);_sessionNum=num;try{localStorage.removeItem('gab_cleared_flag');}catch(e){}return version;}
+function _saveContrat(num){var data=getFormData(),existing=null;try{existing=JSON.parse(localStorage.getItem(SAVE_PREFIX+num));}catch(e){}var version=existing?((existing._version||0)+1):1;_fifoClean();var payload=JSON.parse(JSON.stringify(data));payload._version=version;payload._ts=Date.now();localStorage.setItem(SAVE_PREFIX+num,JSON.stringify(payload));_sessionHash=_dataHash(payload);_sessionNum=num;try{localStorage.removeItem('gab_cleared_flag');}catch(e){}
+  /* ── Badge tracking on save ── */
+  (function(refNum){
+    try{
+      var _UP=['MOTALL'];
+      var _UC=['810MIA','813MIA','AURAMA','AURMA','VSPEQMA','AURSMA','AUAZMA'];
+      var r=refNum.toUpperCase();
+      if(_UP.some(function(p){return r.indexOf(p)===0;}))
+        localStorage.setItem('badge_moto_count',String(parseInt(localStorage.getItem('badge_moto_count')||'0',10)+1));
+      if(_UC.some(function(p){return r.indexOf(p)===0;}))
+        localStorage.setItem('badge_contrat_count',String(parseInt(localStorage.getItem('badge_contrat_count')||'0',10)+1));
+      var _filled=0;
+      ['slotInput0','slotInput1','slotInput2'].forEach(function(sid){
+        var el=document.getElementById(sid);if(el&&el.value.trim())_filled++;
+      });
+      var _slotPrev=parseInt(localStorage.getItem('badge_slot_max')||'0',10);
+      if(_filled>_slotPrev) localStorage.setItem('badge_slot_max',String(_filled));
+      if(typeof checkBadges==='function') setTimeout(checkBadges,200);
+    }catch(e){}
+  })(num);
+  return version;}
 function _loadContrat(num){var raw=localStorage.getItem(SAVE_PREFIX+num);if(!raw)return false;try{var d=JSON.parse(raw);setFormData(d);_sessionHash=_dataHash(d);_sessionNum=num;if(d.commentPrefs&&typeof loadCommentPrefs==='function'){try{localStorage.setItem('commentCustomPrefs',JSON.stringify(d.commentPrefs));loadCommentPrefs();}catch(ex){}}return true;}catch(e){return false;}}
 function _clearWarningReason(){var num=((document.getElementById('saveContrat')||{}).value||'').trim();if(!num)return null;if(!localStorage.getItem(SAVE_PREFIX+num))return "Le contrat "+num+" n'a pas encore été enregistré. Voulez-vous vraiment effacer ?";if(_sessionNum===num&&_dataHash(getFormData())!==_sessionHash)return "Vous n'avez pas enregistré les dernières modifications du contrat "+num+". Voulez-vous vraiment effacer ?";return null;}
 function _doClear(){_sessionHash=null;_sessionNum=null;document.getElementById('saveContrat').value='';setSaveStatus('','');effacerTout();if(typeof resetValidationPanel==='function')resetValidationPanel();try{localStorage.setItem('gab_cleared_flag','1');}catch(e){}
@@ -4582,6 +4619,22 @@ initModeComplexeSwitch();
 });
 
   restoreAllFields(); installAutosave(); startPeriodicUpdateCheck(); scheduleDailyRefreshAt0800();
+  /* ── Badge fidélité + initialisation ── */
+  (function(){
+    try{
+      var _today=new Date().toDateString();
+      var _lastDay=localStorage.getItem('badge_fidelite_last_day');
+      var _streak=parseInt(localStorage.getItem('badge_fidelite_streak')||'0',10);
+      if(_lastDay!==_today){
+        var _yest=new Date(Date.now()-86400000).toDateString();
+        if(_lastDay===_yest){ _streak++; }
+        else { _streak=_lastDay?1:1; }
+        localStorage.setItem('badge_fidelite_streak',String(_streak));
+        localStorage.setItem('badge_fidelite_last_day',_today);
+      }
+    }catch(e){}
+    if(typeof checkBadges==='function') setTimeout(checkBadges,800);
+  })();
   initRiPopupBehaviors();
   initWhatsNewBtn();
 
@@ -5098,6 +5151,7 @@ function _clEsc(s) {
     btn.classList.toggle('toolBtnActive',!on); btn.setAttribute('aria-pressed',!on?'true':'false');
     card.style.display=!on?'block':'none';
     if(!on) _valRefreshAuto();
+    if(!on) try{localStorage.setItem('badge_val_start_ts',String(Date.now()));}catch(e){}
     if(typeof _valUpdateClientComments==='function') _valUpdateClientComments();
   }
 
@@ -5335,6 +5389,20 @@ function _clEsc(s) {
   }
 
     function buildValidationComment() {
+    /* ── Badge tracking validation ── */
+    (function(){
+      try{
+        localStorage.setItem('badge_validation_count',
+          String(parseInt(localStorage.getItem('badge_validation_count')||'0',10)+1));
+        var _t0=parseInt(localStorage.getItem('badge_val_start_ts')||'0',10);
+        if(_t0>0){
+          var _el=(Date.now()-_t0)/1000;
+          if(_el<=900) localStorage.setItem('badge_controle_vitesse_900','1');
+          if(_el<=300) localStorage.setItem('badge_controle_vitesse_300','1');
+        }
+        if(typeof checkBadges==='function') setTimeout(checkBadges,200);
+      }catch(e){}
+    })();
     var dmd=[],modif=[],nomDiffDone=false;
     function on(id){var e=document.getElementById(id);return !!(e&&e.classList.contains('vBtnOn'));}
     function gv(id){var e=document.getElementById(id);return e?e.value.trim():'';}
@@ -5985,44 +6053,51 @@ window.closeMenu  = function() {};
   <script>
   /* ==================== SYSTÈME SUCCÈS / BADGES GAB v1.0 ==================== */
   var BADGE_DEFINITIONS = [
-    {
-      id:    'sgp_50',
-      label: 'SGP 50%',
-      desc:  'SGP — 50 % de retours validés pour la 1ère fois',
-      img:   'badges/SGP50pct.png'
-    },
-    { id:'sgp_70_x1',      label:'SGP 70% ×1',        desc:'SGP — 70 % de retours validés (1ère fois)',          img:'badges/SGP70pctx1.png' },
-    { id:'sgp_70_x2',      label:'SGP 70% ×2',        desc:'SGP — 70 % de retours validés (2ème fois)',          img:'badges/SGP70pctx2.png' },
-    { id:'sgp_70_x3',      label:'SGP 70% ×3',        desc:'SGP — 70 % de retours validés (3ème fois)',          img:'badges/SGP70pctx3.png' },
-    { id:'sgp_100_x1',     label:'SGP 100% ×1',       desc:'SGP — 100 % de retours validés (1ère fois) !',       img:'badges/SGP100pctx1.png' },
-    { id:'sgp_100_x2',     label:'SGP 100% ×2',       desc:'SGP — 100 % de retours validés (2ème fois) !',       img:'badges/SGP100pctx2.png' },
-    { id:'sgp_100_x3',     label:'SGP 100% ×3',       desc:'SGP — 100 % de retours validés (3ème fois) !',       img:'badges/SGP100pctx3.png' },
-    { id:'sgp_serie_2',    label:'SGP Série ×2',  desc:'SGP — 70 % ou + pendant 2 semaines consécutives',        img:'badges/SGPx2.png' },
-    { id:'sgp_serie_3',    label:'SGP Série ×3',  desc:'SGP — 70 % ou + pendant 3 semaines consécutives',        img:'badges/SGPx3.png' },
-    { id:'sgp_serie_4',    label:'SGP Série ×4',  desc:'SGP — 70 % ou + pendant 4 semaines consécutives',        img:'badges/SGPx4.png' },
-    { id:'sgp_100_serie_2',label:'SGP 100% Série ×2', desc:'SGP — 100 % pendant 2 semaines consécutives !',  img:'badges/serie1002semFINAL.png' },
-    { id:'sgp_100_serie_3',label:'SGP 100% Série ×3', desc:'SGP — 100 % pendant 3 semaines consécutives !',  img:'badges/serie1003semFINAL.png' },
-    { id:'sgp_100_serie_4',label:'SGP 100% Série ×4', desc:'SGP — 100 % pendant 4 semaines consécutives !',  img:'badges/serie1004semFINAL.png' },
-    { id:'moto_1',         label:'1ère Moto',           desc:'1er dossier moto enregistré',                     img:'badges/1ereMoto.png' },
-    { id:'moto_10',        label:'10ème Moto',           desc:'10ème dossier moto enregistré',              img:'badges/10emeMoto.png' },
-    { id:'moto_50',        label:'50ème Moto',           desc:'50ème dossier moto — expert',               img:'badges/50emeMoto.png' },
-    { id:'moto_100',       label:'100ème Moto',          desc:'100 motos ! Légende.',                           img:'badges/100emeMoto.png' },
-    { id:'validation_1',   label:'1ère Validation',      desc:'1ère validation guidée réussie',       img:'badges/1ereValidation.png' },
-    { id:'validation_10',  label:'10ème Validation',     desc:'10ème validation guidée',                   img:'badges/10emeValidation.png' },
-    { id:'validation_50',  label:'50ème Validation',     desc:'50 validations — expert',                       img:'badges/50emeValidation.png' },
-    { id:'validation_100', label:'100ème Validation',    desc:'100 validations — maîtrise totale',         img:'badges/100emeValidation.png' },
-    { id:'contrat_1',      label:'1er Contrat',               desc:'1er dossier enregistré — bienvenue !',     img:'badges/1ercontrat.png' },
-    { id:'contrat_10',     label:'10ème Contrat',        desc:'10 dossiers — en progression',                  img:'badges/10emecontrat.png' },
-    { id:'contrat_50',     label:'50ème Contrat',        desc:'50 dossiers — expert',                          img:'badges/50emecontrat.png' },
-    { id:'contrat_100',    label:'100ème Contrat',       desc:'100 dossiers — Maître GAB',                img:'badges/100emecontrat.png' },
-    { id:'slot_double',    label:'Double Slot',               desc:'2 slots actifs simultanément',                  img:'badges/DoubleSlot.png' },
-    { id:'slot_triple',    label:'Triple Slot',               desc:'3 slots actifs simultanément — expert',    img:'badges/TripleSlot.png' },
-    { id:'frise_5',        label:'Frise ×5',             desc:'5 lignes saisies dans la frise',                    img:'badges/Frisex5.png' },
-    { id:'frise_10',       label:'Frise ×10',            desc:'10 lignes dans la frise',                           img:'badges/Frisex10.png' },
-    { id:'crm_20',         label:'Mémoire CRM',          desc:'Tableau CRM consulté 20 fois !',                img:'badges/MemoireCRM.png' },
-    { id:'controle_15min', label:'Contrôle Éclair', desc:'Validation guidée en moins de 15 min',    img:'badges/ControleEclair.png' },
-    { id:'controle_5min',  label:'Contrôle Foudre',      desc:'Validation guidée en moins de 5 min !',  img:'badges/ControleFoudre.png' },
-    { id:'fidelite_5j',    label:'Fidèle 5 jours',  desc:'5 jours consécutifs sur GAB !',               img:'badges/Fidelite5J.png' }
+    /* ── Moto ── */
+    { id:'moto_1',           label:'1ère Moto',             desc:'1er dossier moto enregistré',                       img:'badges/1ereMoto.png' },
+    { id:'moto_10',          label:'10ème Moto',            desc:'10ème moto enregistrée',                           img:'badges/10emeMoto.png' },
+    { id:'moto_50',          label:'50ème Moto',            desc:'50ème moto enregistrée',                           img:'badges/50emeMoto.png' },
+    { id:'moto_100',         label:'100ème Moto',           desc:'100ème moto enregistrée',                          img:'badges/100emeMoto.png' },
+    /* ── Contrat ── */
+    { id:'contrat_1',        label:'1er Contrat',           desc:'1er contrat enregistré',                            img:'badges/1ercontrat.png' },
+    { id:'contrat_10',       label:'10ème Contrat',         desc:'10ème contrat enregistré',                         img:'badges/10emecontrat.png' },
+    { id:'contrat_50',       label:'50ème Contrat',         desc:'50ème contrat enregistré',                         img:'badges/50emecontrat.png' },
+    { id:'contrat_100',      label:'100ème Contrat',        desc:'100ème contrat enregistré',                        img:'badges/100emecontrat.png' },
+    /* ── Validation ── */
+    { id:'validation_1',     label:'1ère Validation',       desc:'1ère validation guidée',                           img:'badges/1ereValidation.png' },
+    { id:'validation_10',    label:'10ème Validation',      desc:'10ème validation guidée',                          img:'badges/10emeValidation.png' },
+    { id:'validation_50',    label:'50ème Validation',      desc:'50ème validation guidée',                          img:'badges/50emeValidation.png' },
+    { id:'validation_100',   label:'100ème Validation',     desc:'100ème validation guidée',                         img:'badges/100emeValidation.png' },
+    /* ── Slot ── */
+    { id:'slot_double',      label:'Double Slot',           desc:'Multitâche : 2 slots actifs simultanément',       img:'badges/DoubleSlot.png' },
+    { id:'slot_triple',      label:'Triple Slot',           desc:'Multitâche : 3 slots actifs simultanément',       img:'badges/TripleSlot.png' },
+    /* ── Frise ── */
+    { id:'frise_5',          label:'Tableau ×5',             desc:'5 lignes saisies dans le tableau',                   img:'badges/Frisex5.png' },
+    { id:'frise_10',         label:'Tableau ×10',            desc:'10 lignes saisies dans le tableau',                  img:'badges/Frisex10.png' },
+    { id:'frise_15',         label:'Tableau ×15',            desc:'15 lignes saisies dans le tableau',                  img:'badges/Frisex15.png' },
+    /* ── CRM ── */
+    { id:'crm_20',           label:'Mémoire CRM',           desc:'Tableau CRM ouvert 20 fois',                         img:'badges/MemoireCRM.png' },
+    /* ── Contrôle vitesse ── */
+    { id:'controle_15min',   label:'Contrôle Éclair',        desc:'Validation express (< 15 min)',                      img:'badges/ControleEclair.png' },
+    { id:'controle_5min',    label:'Contrôle Foudre',       desc:'Validation en moins de 5 min',                      img:'badges/ControleFoudre.png' },
+    /* ── Fidélité ── */
+    { id:'fidelite_5j',      label:'Fidèle 5 jours',        desc:'Ouverture 5 jours consécutifs',                      img:'badges/Fidelite5J.png' },
+    /* ── SGP Retour % (piloté par GAB_SGP via localStorage) ── */
+    { id:'sgp_50',           label:'SGP 50%',               desc:'SGP — 50 % de retours validés pour la 1ère fois',  img:'badges/SGP50pct.png' },
+    { id:'sgp_70_1',         label:'SGP 70% ×1',            desc:'SGP — 70 % de retours validés (1ère fois)',      img:'badges/SGP70pctx1.png' },
+    { id:'sgp_70_2',         label:'SGP 70% ×2',            desc:'SGP — 70 % de retours validés (2ème fois)',      img:'badges/SGP70pctx2.png' },
+    { id:'sgp_70_3',         label:'SGP 70% ×3',            desc:'SGP — 70 % de retours validés (3ème fois)',      img:'badges/SGP70pctx3.png' },
+    { id:'sgp_100_1',        label:'SGP 100% ×1',           desc:'SGP — 100 % de retours validés (1ère fois)!',    img:'badges/SGP100pctx1.png' },
+    { id:'sgp_100_2',        label:'SGP 100% ×2',           desc:'SGP — 100 % de retours validés (2ème fois)!',    img:'badges/SGP100pctx2.png' },
+    { id:'sgp_100_3',        label:'SGP 100% ×3',           desc:'SGP — 100 % de retours validés (3ème fois)!',    img:'badges/SGP100pctx3.png' },
+    /* ── SGP Séries 70% ── */
+    { id:'sgp_serie_2',      label:'SGP Série ×2',         desc:'SGP — 70 % ou + pendant 2 semaines consécutives', img:'badges/SGPx2.png' },
+    { id:'sgp_serie_3',      label:'SGP Série ×3',         desc:'SGP — 70 % ou + pendant 3 semaines consécutives', img:'badges/SGPx3.png' },
+    { id:'sgp_serie_4',      label:'SGP Série ×4',         desc:'SGP — 70 % ou + pendant 4 semaines consécutives', img:'badges/SGPx4.png' },
+    /* ── SGP Séries 100% ── */
+    { id:'sgp_100_serie_2',  label:'SGP 100% Série ×2',    desc:'SGP — 100 % pendant 2 semaines consécutives!',   img:'badges/serie1002semFINAL.png' },
+    { id:'sgp_100_serie_3',  label:'SGP 100% Série ×3',    desc:'SGP — 100 % pendant 3 semaines consécutives!',   img:'badges/SGP100pctx3b.png' },
+    { id:'sgp_100_serie_4',  label:'SGP 100% Série ×4',    desc:'SGP — 100 % pendant 4 semaines consécutives!',   img:'badges/SGP100pctx4a.png' }
   ];
 
   function _getBadgeStore(){try{return JSON.parse(localStorage.getItem('gab_badges')||'{}');}catch(e){return {};}}
@@ -6037,7 +6112,63 @@ window.closeMenu  = function() {};
     return n;
   }
 
-  function checkBadges(){}
+  function checkBadges(){
+    var store=_getBadgeStore(), fresh=[];
+    BADGE_DEFINITIONS.forEach(function(def){
+      if(store[def.id]&&store[def.id].unlocked)return;
+      var unlock=false;
+      var _ls=function(k){return parseInt(localStorage.getItem(k)||'0',10);};
+      /* Moto */
+      if(def.id==='moto_1')             unlock=_ls('badge_moto_count')>=1;
+      if(def.id==='moto_10')            unlock=_ls('badge_moto_count')>=10;
+      if(def.id==='moto_50')            unlock=_ls('badge_moto_count')>=50;
+      if(def.id==='moto_100')           unlock=_ls('badge_moto_count')>=100;
+      /* Contrat */
+      if(def.id==='contrat_1')          unlock=_ls('badge_contrat_count')>=1;
+      if(def.id==='contrat_10')         unlock=_ls('badge_contrat_count')>=10;
+      if(def.id==='contrat_50')         unlock=_ls('badge_contrat_count')>=50;
+      if(def.id==='contrat_100')        unlock=_ls('badge_contrat_count')>=100;
+      /* Validation */
+      if(def.id==='validation_1')       unlock=_ls('badge_validation_count')>=1;
+      if(def.id==='validation_10')      unlock=_ls('badge_validation_count')>=10;
+      if(def.id==='validation_50')      unlock=_ls('badge_validation_count')>=50;
+      if(def.id==='validation_100')     unlock=_ls('badge_validation_count')>=100;
+      /* Slot */
+      if(def.id==='slot_double')        unlock=_ls('badge_slot_max')>=2;
+      if(def.id==='slot_triple')        unlock=_ls('badge_slot_max')>=3;
+      /* Frise */
+      if(def.id==='frise_5')            unlock=_ls('badge_frise_count')>=5;
+      if(def.id==='frise_10')           unlock=_ls('badge_frise_count')>=10;
+      if(def.id==='frise_15')           unlock=_ls('badge_frise_count')>=15;
+      /* CRM */
+      if(def.id==='crm_20')             unlock=_ls('badge_crm_open_count')>=20;
+      /* Contrôle vitesse */
+      if(def.id==='controle_15min')     unlock=_ls('badge_controle_vitesse_900')>=1;
+      if(def.id==='controle_5min')      unlock=_ls('badge_controle_vitesse_300')>=1;
+      /* Fidélité */
+      if(def.id==='fidelite_5j')        unlock=_ls('badge_fidelite_streak')>=5;
+      /* SGP (piloté par GAB_SGP.html via localStorage partagé) */
+      if(def.id==='sgp_50')             unlock=parseFloat(localStorage.getItem('badge_sgp_pct_history')||'0')>=50;
+      if(def.id==='sgp_70_1')           unlock=_ls('badge_sgp70_count')>=1;
+      if(def.id==='sgp_70_2')           unlock=_ls('badge_sgp70_count')>=2;
+      if(def.id==='sgp_70_3')           unlock=_ls('badge_sgp70_count')>=3;
+      if(def.id==='sgp_100_1')          unlock=_ls('badge_sgp100_count')>=1;
+      if(def.id==='sgp_100_2')          unlock=_ls('badge_sgp100_count')>=2;
+      if(def.id==='sgp_100_3')          unlock=_ls('badge_sgp100_count')>=3;
+      if(def.id==='sgp_serie_2')        unlock=_ls('badge_sgp70_streak')>=2;
+      if(def.id==='sgp_serie_3')        unlock=_ls('badge_sgp70_streak')>=3;
+      if(def.id==='sgp_serie_4')        unlock=_ls('badge_sgp70_streak')>=4;
+      if(def.id==='sgp_100_serie_2')    unlock=_ls('badge_sgp100_streak')>=2;
+      if(def.id==='sgp_100_serie_3')    unlock=_ls('badge_sgp100_streak')>=3;
+      if(def.id==='sgp_100_serie_4')    unlock=_ls('badge_sgp100_streak')>=4;
+      if(unlock){
+        store[def.id]={unlocked:true,unlockedAt:new Date().toISOString()};
+        fresh.push(def);
+      }
+    });
+    _saveBadgeStore(store);
+    if(fresh.length) _showBadgeToast(fresh);
+  }
 
   function _showBadgeToast(defs){
     defs.forEach(function(def,i){
@@ -6125,13 +6256,10 @@ window.closeMenu  = function() {};
     if(typeof orig==='function'){
       window.saveContrat=function(){
         var countBefore=_countUniqueSaved();
-        var _ref=((document.getElementById('saveContrat')||{}).value||'').trim();
         var r=orig.apply(this,arguments);
         var countAfter=_countUniqueSaved();
         /* Déclenche uniquement si une nouvelle référence unique vient d'être ajoutée */
         if(countAfter>countBefore){
-          var _isMoto=!!(document.getElementById('moto')||{}).checked;
-          window.dispatchEvent(new CustomEvent('dossiersaved',{detail:{ref:_ref,isMoto:_isMoto}}));
           setTimeout(checkBadges,200);
         }
         return r;
@@ -6142,88 +6270,103 @@ window.closeMenu  = function() {};
 
   /* ==================== BADGES SGP (sgpgraded) ==================== */
   (function(){
-    function _sgpWeekKey(iso){return iso?iso.slice(0,10):new Date().toISOString().slice(0,10);}
-    function _sgpDaysDiff(k1,k2){return Math.round((new Date(k2)-new Date(k1))/86400000);}
-    function _sgpUpdateStreak(lsKey,weekKey,qualifies){
-      var raw=localStorage.getItem(lsKey+'_st'),st={lastWeek:null,streak:0};
+    function _sgpWeekKey(iso){
+      return iso ? iso.slice(0,10) : new Date().toISOString().slice(0,10);
+    }
+    function _sgpDaysDiff(k1,k2){
+      return Math.round((new Date(k2)-new Date(k1))/86400000);
+    }
+    function _sgpUpdateStreak(lsKey, weekKey, qualifies){
+      var raw=localStorage.getItem(lsKey+'_st');
+      var st={lastWeek:null,streak:0};
       try{st=JSON.parse(raw)||st;}catch(e){}
-      if(st.lastWeek===weekKey){if(!qualifies)st.streak=0;}
-      else{var diff=st.lastWeek?_sgpDaysDiff(st.lastWeek,weekKey):0;st.streak=qualifies?((diff===7)?(st.streak+1):1):0;st.lastWeek=weekKey;}
+      if(st.lastWeek===weekKey){
+        /* Re-archive de la même semaine */
+        if(!qualifies) st.streak=0;
+        /* si qualifies, on garde le streak tel quel (pas de ré-incrément) */
+      } else {
+        var diff=st.lastWeek?_sgpDaysDiff(st.lastWeek,weekKey):0;
+        st.streak = qualifies ? ((diff===7)?(st.streak+1):1) : 0;
+        st.lastWeek=weekKey;
+      }
       try{localStorage.setItem(lsKey+'_st',JSON.stringify(st));}catch(e){}
       return st.streak;
     }
-    function _sgpIncrLS(key,importId){
+    function _sgpIncrLS(key, importId){
+      /* N'incrémente qu'une seule fois par import (pas par re-archive) */
       var lastKey=key+'_lastId';
-      if(importId&&localStorage.getItem(lastKey)===importId)return parseInt(localStorage.getItem(key)||'0',10);
+      if(importId && localStorage.getItem(lastKey)===importId) return parseInt(localStorage.getItem(key)||'0',10);
       var n=parseInt(localStorage.getItem(key)||'0',10)+1;
-      try{localStorage.setItem(key,String(n));if(importId)localStorage.setItem(lastKey,importId);}catch(e){}
+      try{localStorage.setItem(key,String(n)); if(importId) localStorage.setItem(lastKey,importId);}catch(e){}
       return n;
     }
-    function _sgpUnlock(id,store,fresh){if(store[id]&&store[id].unlocked)return;store[id]={unlocked:true,unlockedAt:new Date().toISOString()};_saveBadgeStore(store);var def=BADGE_DEFINITIONS.find(function(d){return d.id===id;});if(def)fresh.push(def);}
-    function _sgpCelebrate(id,store,fresh){var def=BADGE_DEFINITIONS.find(function(d){return d.id===id;});if(!def)return;if(!store[id]||!store[id].unlocked){store[id]={unlocked:true,unlockedAt:new Date().toISOString()};_saveBadgeStore(store);}fresh.push(def);}
-    function _sgpFire(fresh){if(!fresh.length)return;_showBadgeToast(fresh);var pop=document.getElementById('succesPopup');if(pop&&pop.style.display==='flex')_renderSuccesGrid();}
-    window.addEventListener('sgpgraded',function(e){
-      var d=e.detail||{},pct=typeof d.pct==='number'?d.pct:(typeof d.score==='number'?d.score:0);
-      var importId=d.importId||null,weekKey=_sgpWeekKey(d.sgpDate||null),store=_getBadgeStore(),fresh=[];
-      if(pct>=50)_sgpUnlock('sgp_50',store,fresh);
-      if(pct>=70){var c70=_sgpIncrLS('badgesgp70count',importId);if(c70>=1)_sgpUnlock('sgp_70_x1',store,fresh);if(c70>=2)_sgpUnlock('sgp_70_x2',store,fresh);if(c70>=3)_sgpUnlock('sgp_70_x3',store,fresh);}
-      if(pct>=100){var c100=_sgpIncrLS('badgesgp100count',importId);if(c100>=1)_sgpUnlock('sgp_100_x1',store,fresh);if(c100>=2)_sgpUnlock('sgp_100_x2',store,fresh);if(c100>=3)_sgpUnlock('sgp_100_x3',store,fresh);}
-      var s70=_sgpUpdateStreak('badgesgp70streak',weekKey,pct>=70);
-      if(s70>=4)_sgpCelebrate('sgp_serie_4',store,fresh);else if(s70>=3)_sgpCelebrate('sgp_serie_3',store,fresh);else if(s70>=2)_sgpCelebrate('sgp_serie_2',store,fresh);
-      var s100=_sgpUpdateStreak('badgesgp100streak',weekKey,pct>=100);
-      if(s100>=4)_sgpCelebrate('sgp_100_serie_4',store,fresh);else if(s100>=3)_sgpCelebrate('sgp_100_serie_3',store,fresh);else if(s100>=2)_sgpCelebrate('sgp_100_serie_2',store,fresh);
-      _sgpFire(fresh);
+    function _sgpUnlock(id, store, fresh){
+      if(store[id]&&store[id].unlocked) return false;
+      store[id]={unlocked:true,unlockedAt:new Date().toISOString()};
+      _saveBadgeStore(store);
+      var def=BADGE_DEFINITIONS.find(function(d){return d.id===id;});
+      if(def) fresh.push(def);
+      return true;
+    }
+    function _sgpCelebrate(id, store, fresh){
+      /* Pour badges non-uniques (streaks) : toast à chaque occurrence */
+      var def=BADGE_DEFINITIONS.find(function(d){return d.id===id;});
+      if(!def) return;
+      if(!store[id]||!store[id].unlocked){
+        store[id]={unlocked:true,unlockedAt:new Date().toISOString()};
+        _saveBadgeStore(store);
+      }
+      fresh.push(def);
+    }
+
+    window.addEventListener('sgpgraded', function(e){
+      var d=e.detail||{};
+      var pct=typeof d.pct==='number'?d.pct:(typeof d.score==='number'?d.score:0);
+      var importId=d.importId||null;
+      var weekKey=_sgpWeekKey(d.sgpDate||null);
+      var store=_getBadgeStore();
+      var fresh=[];
+
+      /* 1. percentage : sgp_50 (unique) */
+      if(pct>=50) _sgpUnlock('sgp_50', store, fresh);
+
+      /* 2. percentagecount 70 : sgp_70_x1/x2/x3 (unique) */
+      if(pct>=70){
+        var c70=_sgpIncrLS('badgesgp70count', importId);
+        if(c70>=1) _sgpUnlock('sgp_70_x1', store, fresh);
+        if(c70>=2) _sgpUnlock('sgp_70_x2', store, fresh);
+        if(c70>=3) _sgpUnlock('sgp_70_x3', store, fresh);
+      }
+
+      /* 3. percentagecount 100 : sgp_100_x1/x2/x3 (unique) */
+      if(pct>=100){
+        var c100=_sgpIncrLS('badgesgp100count', importId);
+        if(c100>=1) _sgpUnlock('sgp_100_x1', store, fresh);
+        if(c100>=2) _sgpUnlock('sgp_100_x2', store, fresh);
+        if(c100>=3) _sgpUnlock('sgp_100_x3', store, fresh);
+      }
+
+      /* 4. streakweeks (pct>=70) : sgp_serie_2/3/4 (non-unique → celebrate) */
+      var s70=_sgpUpdateStreak('badgesgp70streak', weekKey, pct>=70);
+      if(s70>=4) _sgpCelebrate('sgp_serie_4', store, fresh);
+      else if(s70>=3) _sgpCelebrate('sgp_serie_3', store, fresh);
+      else if(s70>=2) _sgpCelebrate('sgp_serie_2', store, fresh);
+
+      /* 5. streakweeks100 (pct>=100) : sgp_100_serie_2/3/4 (non-unique → celebrate) */
+      var s100=_sgpUpdateStreak('badgesgp100streak', weekKey, pct>=100);
+      if(s100>=4) _sgpCelebrate('sgp_100_serie_4', store, fresh);
+      else if(s100>=3) _sgpCelebrate('sgp_100_serie_3', store, fresh);
+      else if(s100>=2) _sgpCelebrate('sgp_100_serie_2', store, fresh);
+
+      if(fresh.length){
+        _showBadgeToast(fresh);
+        /* Rafraîchit la grille si la popup Succès est ouverte */
+        var pop=document.getElementById('succesPopup');
+        if(pop&&pop.style.display==='flex') _renderSuccesGrid();
+      }
     });
   })();
   /* ==================== FIN BADGES SGP ==================== */
-
-  /* ==================== BADGES LOT 2 ==================== */
-  (function(){
-    function _incrLS(k){var n=parseInt(localStorage.getItem(k)||'0',10)+1;try{localStorage.setItem(k,String(n));}catch(e){}return n;}
-    function _unlock(id,s,f){if(s[id]&&s[id].unlocked)return;s[id]={unlocked:true,unlockedAt:new Date().toISOString()};_saveBadgeStore(s);var d=BADGE_DEFINITIONS.find(function(x){return x.id===id;});if(d)f.push(d);}
-    function _celebrate(id,s,f){var d=BADGE_DEFINITIONS.find(function(x){return x.id===id;});if(!d)return;if(!s[id]||!s[id].unlocked){s[id]={unlocked:true,unlockedAt:new Date().toISOString()};_saveBadgeStore(s);}f.push(d);}
-    function _fire(f){if(!f.length)return;_showBadgeToast(f);var p=document.getElementById('succesPopup');if(p&&p.style.display==='flex')_renderSuccesGrid();}
-    window.addEventListener('dossiersaved',function(e){
-      var d=e.detail||{},s=_getBadgeStore(),f=[];
-      if(d.isMoto){var cm=_incrLS('badgemotocount');if(cm>=1)_unlock('moto_1',s,f);if(cm>=10)_unlock('moto_10',s,f);if(cm>=50)_unlock('moto_50',s,f);if(cm>=100)_unlock('moto_100',s,f);}
-      else{var cc=_incrLS('badgecontratcount');if(cc>=1)_unlock('contrat_1',s,f);if(cc>=10)_unlock('contrat_10',s,f);if(cc>=50)_unlock('contrat_50',s,f);if(cc>=100)_unlock('contrat_100',s,f);}
-      _fire(f);
-    });
-    window.addEventListener('validationcompleted',function(e){
-      var d=e.detail||{},s=_getBadgeStore(),f=[];
-      var cv=_incrLS('badgevalidationcount');
-      if(cv>=1)_unlock('validation_1',s,f);if(cv>=10)_unlock('validation_10',s,f);if(cv>=50)_unlock('validation_50',s,f);if(cv>=100)_unlock('validation_100',s,f);
-      var sec=typeof d.elapsedSec==='number'?d.elapsedSec:9999;
-      if(sec<=300)_celebrate('controle_5min',s,f);else if(sec<=900)_celebrate('controle_15min',s,f);
-      _fire(f);
-    });
-    window.addEventListener('friserowadded',function(){var s=_getBadgeStore(),f=[],cf=_incrLS('badgefrisecount');if(cf>=5)_unlock('frise_5',s,f);if(cf>=10)_unlock('frise_10',s,f);_fire(f);});
-    window.addEventListener('crmopened',function(){var s=_getBadgeStore(),f=[],co=_incrLS('badgecrmopencount');if(co>=20)_unlock('crm_20',s,f);_fire(f);});
-    window.addEventListener('slotactivated',function(e){var d=e.detail||{},sim=typeof d.simultaneous==='number'?d.simultaneous:0,s=_getBadgeStore(),f=[];if(sim>=2)_unlock('slot_double',s,f);if(sim>=3)_unlock('slot_triple',s,f);_fire(f);});
-    window.addEventListener('pageloaded',function(){
-      var today=new Date().toISOString().slice(0,10),raw=localStorage.getItem('badgefidelitestreak_st'),st={lastDay:null,streak:0};
-      try{st=JSON.parse(raw)||st;}catch(e){}
-      if(st.lastDay===today)return;
-      var diff=st.lastDay?Math.round((new Date(today)-new Date(st.lastDay))/86400000):0;
-      st.streak=(diff===1)?st.streak+1:1;st.lastDay=today;
-      try{localStorage.setItem('badgefidelitestreak_st',JSON.stringify(st));}catch(e){}
-      if(st.streak>=5){var s=_getBadgeStore(),f=[];_celebrate('fidelite_5j',s,f);_fire(f);}
-    });
-    document.addEventListener('DOMContentLoaded',function(){
-      var _bc=document.querySelector('#btnCrmTable');
-      if(_bc)_bc.addEventListener('click',function(){setTimeout(function(){var w=document.getElementById('crmTableWrap');if(w&&w.style.display==='flex')window.dispatchEvent(new CustomEvent('crmopened',{}));},60);});
-      var _ba=document.getElementById('btnAddRow');
-      if(_ba)_ba.addEventListener('click',function(){window.dispatchEvent(new CustomEvent('friserowadded',{}));});
-      var _vt=null,_bv=document.getElementById('btnValidationMode');
-      if(_bv)_bv.addEventListener('click',function(){if(!_bv.classList.contains('toolBtnActive'))_vt=Date.now();});
-      var _ob=window.buildValidationComment;
-      if(typeof _ob==='function'){window.buildValidationComment=function(){var r=_ob.apply(this,arguments);var sec=_vt?Math.round((Date.now()-_vt)/1000):9999;window.dispatchEvent(new CustomEvent('validationcompleted',{detail:{elapsedSec:sec}}));return r;};}
-      var _os=window._saveContrat;
-      if(typeof _os==='function'){window._saveContrat=function(num){var v=_os.apply(this,arguments);try{setTimeout(function(){var n=(_slSt||[]).filter(function(x){return x.num!==null;}).length;if(n>=2)window.dispatchEvent(new CustomEvent('slotactivated',{detail:{simultaneous:n}}));},100);}catch(e){}return v;};}
-      window.dispatchEvent(new CustomEvent('pageloaded',{}));
-    });
-  })();
-  /* ==================== FIN BADGES LOT 2 ==================== */
 
   /* ==================== FIN SYSTÈME SUCCÈS ==================== */
   </script>
