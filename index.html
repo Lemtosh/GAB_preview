@@ -6337,20 +6337,20 @@ window.closeMenu  = function() {};
       /* 1. percentage : sgp_50 (unique) */
       if(pct>=50) _sgpUnlock('sgp_50', store, fresh);
 
-      /* 2. percentagecount 70 : sgp_70_x1/x2/x3 (unique) */
+      /* 2. percentagecount 70 : sgp_70_1/2/3 (unique) */
       if(pct>=70){
         var c70=_sgpIncrLS('badgesgp70count', importId);
-        if(c70>=1) _sgpUnlock('sgp_70_x1', store, fresh);
-        if(c70>=2) _sgpUnlock('sgp_70_x2', store, fresh);
-        if(c70>=3) _sgpUnlock('sgp_70_x3', store, fresh);
+        if(c70>=1) _sgpUnlock('sgp_70_1', store, fresh);
+        if(c70>=2) _sgpUnlock('sgp_70_2', store, fresh);
+        if(c70>=3) _sgpUnlock('sgp_70_3', store, fresh);
       }
 
-      /* 3. percentagecount 100 : sgp_100_x1/x2/x3 (unique) */
+      /* 3. percentagecount 100 : sgp_100_1/2/3 (unique) */
       if(pct>=100){
         var c100=_sgpIncrLS('badgesgp100count', importId);
-        if(c100>=1) _sgpUnlock('sgp_100_x1', store, fresh);
-        if(c100>=2) _sgpUnlock('sgp_100_x2', store, fresh);
-        if(c100>=3) _sgpUnlock('sgp_100_x3', store, fresh);
+        if(c100>=1) _sgpUnlock('sgp_100_1', store, fresh);
+        if(c100>=2) _sgpUnlock('sgp_100_2', store, fresh);
+        if(c100>=3) _sgpUnlock('sgp_100_3', store, fresh);
       }
 
       /* 4. streakweeks (pct>=70) : sgp_serie_2/3/4 (non-unique → celebrate) */
