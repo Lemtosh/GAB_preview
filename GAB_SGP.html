@@ -947,6 +947,18 @@ function exportAndArchive() {
           archivedDate: imp.archivedDate
         }
       }));
+      // Communication cross-onglet → GAB (succès SGP)
+      localStorage.setItem('gabSGPgraded', JSON.stringify({
+        importId: imp.id,
+        total: _total,
+        parfaits: _parfaits,
+        toTreat: _toTreat,
+        pct: _pct,
+        score: _pct,
+        sgpDate: imp.sgpDate,
+        archivedDate: imp.archivedDate,
+        ts: Date.now()
+      }));
     } catch(e) {}
     history.unshift(imp);
     localStorage.setItem('gabSGP_history', JSON.stringify(history));

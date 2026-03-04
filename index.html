@@ -5733,6 +5733,13 @@ document.addEventListener('DOMContentLoaded',function(){
 
     window.addEventListener('storage', function(e) {
       if (e.key === SGP_STORAGE_KEY) { checkSGPBadge(); checkSGPBanner(); }
+      // Réception score SGP depuis l'onglet GAB_SGP (cross-tab)
+      if (e.key === 'gabSGPgraded' && e.newValue) {
+        try {
+          const d = JSON.parse(e.newValue);
+          window.dispatchEvent(new CustomEvent('sgpgraded', { detail: d }));
+        } catch(e2) {}
+      }
     });
 
     document.addEventListener('DOMContentLoaded', function() {
