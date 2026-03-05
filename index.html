@@ -5748,15 +5748,24 @@ document.addEventListener('DOMContentLoaded',function(){
     // même si les deux pages ne sont pas sur la même origine)
     function _gabSGPCheckPending() {
       try {
-        var _raw = localStorage.getItem('gabSGPgraded');
-        if (!_raw) return;
-        var _d = JSON.parse(_raw);
-        // Ignorer les événements de plus de 24 h
-        if (!_d || (_d.ts && Date.now() - _d.ts > 86400000)) {
-          localStorage.removeItem('gabSGPgraded'); return;
+        // Lire la queue complète (plusieurs archivages SGP en attente)
+        var _rawQ = localStorage.getItem('gabSGPgraded_queue');
+        var _queue = [];
+        try { _queue = _rawQ ? JSON.parse(_rawQ) : []; } catch(_eq) {}
+        if (!Array.isArray(_queue)) _queue = [];
+        // Backward compat : entrée unitaire legacy
+        var _rawSingle = localStorage.getItem('gabSGPgraded');
+        if (_rawSingle) {
+          try { var _ds = JSON.parse(_rawSingle); if(_ds) _queue.unshift(_ds); } catch(_es) {}
+          localStorage.removeItem('gabSGPgraded');
         }
-        localStorage.removeItem('gabSGPgraded'); // consommer avant dispatch (évite doublon)
-        window.dispatchEvent(new CustomEvent('sgpgraded', { detail: _d }));
+        if (!_queue.length) return;
+        localStorage.removeItem('gabSGPgraded_queue'); // consommer avant dispatch
+        var _now = Date.now();
+        _queue.forEach(function(_d) {
+          if (!_d || (_d.ts && _now - _d.ts > 86400000)) return; // ignorer > 24h
+          window.dispatchEvent(new CustomEvent('sgpgraded', { detail: _d }));
+        });
       } catch(_e) {}
     }
     // Déclenche au retour sur l'onglet (visibilité ou focus)
@@ -5768,12 +5777,8 @@ document.addEventListener('DOMContentLoaded',function(){
     window.addEventListener('storage', function(e) {
       if (e.key === SGP_STORAGE_KEY) { checkSGPBadge(); checkSGPBanner(); }
       // Réception score SGP depuis l'onglet GAB_SGP (cross-tab, même origine)
-      if (e.key === 'gabSGPgraded' && e.newValue) {
-        try {
-          const d = JSON.parse(e.newValue);
-          localStorage.removeItem('gabSGPgraded'); // évite double-dispatch au focus
-          window.dispatchEvent(new CustomEvent('sgpgraded', { detail: d }));
-        } catch(e2) {}
+      if ((e.key === 'gabSGPgraded' || e.key === 'gabSGPgraded_queue') && e.newValue) {
+        _gabSGPCheckPending(); // traite toute la queue d'un coup
       }
     });
 

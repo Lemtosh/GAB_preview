@@ -948,7 +948,11 @@ function exportAndArchive() {
         }
       }));
       // Communication cross-onglet → GAB (succès SGP)
-      localStorage.setItem('gabSGPgraded', JSON.stringify({
+      // File d'attente : plusieurs archivages peuvent s'accumuler avant que GAB soit lu
+      var _gabQueue = [];
+      try { _gabQueue = JSON.parse(localStorage.getItem('gabSGPgraded_queue') || '[]'); } catch(_eq) {}
+      if (!Array.isArray(_gabQueue)) _gabQueue = [];
+      _gabQueue.push({
         importId: imp.id,
         total: _total,
         parfaits: _parfaits,
@@ -958,7 +962,9 @@ function exportAndArchive() {
         sgpDate: imp.sgpDate,
         archivedDate: imp.archivedDate,
         ts: Date.now()
-      }));
+      });
+      if (_gabQueue.length > 100) _gabQueue = _gabQueue.slice(-100);
+      localStorage.setItem('gabSGPgraded_queue', JSON.stringify(_gabQueue));
     } catch(e) {}
     history.unshift(imp);
     localStorage.setItem('gabSGP_history', JSON.stringify(history));
