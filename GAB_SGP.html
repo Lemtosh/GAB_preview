@@ -771,6 +771,9 @@ function parseOutlookTable(html) {
   var sgpDate  = null;
   var deadline = null;
   var fullText = doc.body ? (doc.body.innerText || doc.body.textContent || '') : '';
+  // Nettoyage des caractères invisibles (zero-width spaces, soft hyphens…)
+  // fréquents dans les copier-coller depuis Outlook
+  fullText = fullText.replace(/[\u200B\u200C\u200D\u00AD\uFEFF\u2060]/g, '');
 
   // Format : "A faire avant le 26/02/2026 17h" ou "17h30"
   var mDl = fullText.match(/[Aa]\s*faire\s+avant\s+le\s+(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})\s+(\d{1,2})h(\d{0,2})/);
@@ -1028,10 +1031,12 @@ function renderHistory() {
     var nvBadge = nv > 0 ? '<span style="background:#e53935;color:#fff;padding:2px 7px;border-radius:4px;font-size:11px;font-weight:700;margin-left:6px;">' + nv + ' NON VALIDÉ(S)</span>' : '';
     var treatBadge = '<span style="background:#546e7a;color:#fff;padding:2px 7px;border-radius:4px;font-size:11px;font-weight:700;margin-left:6px;">' + toTreat + ' à traiter</span>';
     var archivedStr = imp.archivedDate ? formatDateFR(imp.archivedDate) : '';
+    var receptionStr = imp.importDate ? formatDateFR(imp.importDate) : '';
     return '<div class="card" style="margin-bottom:16px;">'
       + '<div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:12px;">'
       + '<span style="font-weight:700;font-size:14px;">Retour SGP — ' + imp.items.length + ' contrat(s)' + treatBadge + nvBadge
-        + (archivedStr ? '<span style="font-weight:400;font-size:12px;color:var(--muted);margin-left:10px;">archivé le ' + archivedStr + '</span>' : '')
+        + (receptionStr ? '<span style="font-weight:400;font-size:12px;color:var(--muted);margin-left:8px;">&#128197; reçu le ' + receptionStr + '</span>' : '')
+        + (archivedStr ? '<span style="font-weight:400;font-size:12px;color:var(--muted);margin-left:8px;">archivé le ' + archivedStr + '</span>' : '')
         + '</span>'
       + '<div style="display:flex;gap:8px;">'
       + '<button onclick="restoreFromHistory(' + i + ')" style="padding:7px 14px;background:#1976d2;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:12px;font-weight:600;font-family:inherit;">↩ Récupérer</button>'
