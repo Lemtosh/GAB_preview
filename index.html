@@ -4039,19 +4039,19 @@ ${formatDateFR(deb)} → ${formatDateFR(fin)}`;
       totalEl.textContent = `Antécédents : Auto = ${autoAgg.total} mois${_autoDetailOnly}.`;
         interrupEl.textContent = `Interruption : ${interAuto} mois.`;
       }
+      /* ── Badge frise tracking ── */
+      (function(){
+        try{
+          var _f=0;
+          for(var i=1;i<=20;i++){var d=document.getElementById('deb'+i);if(d&&d.value.trim())_f++;}
+          var _fp=parseInt(localStorage.getItem('badge_frise_count')||'0',10);
+          if(_f>_fp){
+            localStorage.setItem('badge_frise_count',String(_f));
+            if(typeof checkBadges==='function') setTimeout(checkBadges,200);
+          }
+        }catch(e){}
+      })();
     }
-    /* ── Badge frise tracking ── */
-    (function(){
-      try{
-        var _f=0;
-        for(var i=1;i<=20;i++){var d=document.getElementById('deb'+i);if(d&&d.value.trim())_f++;}
-        var _fp=parseInt(localStorage.getItem('badge_frise_count')||'0',10);
-        if(_f>_fp){
-          localStorage.setItem('badge_frise_count',String(_f));
-          if(typeof checkBadges==='function') setTimeout(checkBadges,200);
-        }
-      }catch(e){}
-    })();
 
     function initCanvases(){
       clearCanvas('canvasAuto', 'legendAuto', 'Renseigne une date d’effet pour afficher la frise.');
@@ -4486,9 +4486,17 @@ function _saveContrat(num){var data=getFormData(),existing=null;try{existing=JSO
       var _UP=['MOTALL'];
       var _UC=['810MIA','813MIA','AURAMA','AURMA','VSPEQMA','AURSMA','AUAZMA'];
       var r=refNum.toUpperCase();
-      if(_UP.some(function(p){return r.indexOf(p)===0;}))
+      /* Déduplication : chaque référence unique ne compte qu'une fois */
+      var _seenRefs=[];try{_seenRefs=JSON.parse(localStorage.getItem('badge_seen_refs')||'[]');}catch(e2){}
+      var _isNew=(_seenRefs.indexOf(r)<0);
+      if(_isNew){
+        _seenRefs.push(r);
+        if(_seenRefs.length>3000) _seenRefs=_seenRefs.slice(-3000);
+        try{localStorage.setItem('badge_seen_refs',JSON.stringify(_seenRefs));}catch(e2){}
+      }
+      if(_isNew && _UP.some(function(p){return r.indexOf(p)===0;}))
         localStorage.setItem('badge_moto_count',String(parseInt(localStorage.getItem('badge_moto_count')||'0',10)+1));
-      if(_UC.some(function(p){return r.indexOf(p)===0;}))
+      if(_isNew && _UC.some(function(p){return r.indexOf(p)===0;}))
         localStorage.setItem('badge_contrat_count',String(parseInt(localStorage.getItem('badge_contrat_count')||'0',10)+1));
       var _filled=0;
       ['slotInput0','slotInput1','slotInput2'].forEach(function(sid){
@@ -6363,7 +6371,7 @@ window.closeMenu  = function() {};
 
       /* 2. percentagecount 70 : sgp_70_1/2/3 (unique) */
       if(pct>=70){
-        var c70=_sgpIncrLS('badgesgp70count', importId);
+        var c70=_sgpIncrLS('badge_sgp70_count', importId);
         if(c70>=1) _sgpUnlock('sgp_70_1', store, fresh);
         if(c70>=2) _sgpUnlock('sgp_70_2', store, fresh);
         if(c70>=3) _sgpUnlock('sgp_70_3', store, fresh);
@@ -6371,20 +6379,20 @@ window.closeMenu  = function() {};
 
       /* 3. percentagecount 100 : sgp_100_1/2/3 (unique) */
       if(pct>=100){
-        var c100=_sgpIncrLS('badgesgp100count', importId);
+        var c100=_sgpIncrLS('badge_sgp100_count', importId);
         if(c100>=1) _sgpUnlock('sgp_100_1', store, fresh);
         if(c100>=2) _sgpUnlock('sgp_100_2', store, fresh);
         if(c100>=3) _sgpUnlock('sgp_100_3', store, fresh);
       }
 
       /* 4. streakweeks (pct>=70) : sgp_serie_2/3/4 (non-unique → celebrate) */
-      var s70=_sgpUpdateStreak('badgesgp70streak', weekKey, pct>=70);
+      var s70=_sgpUpdateStreak('badge_sgp70_streak', weekKey, pct>=70);
       if(s70>=4) _sgpCelebrate('sgp_serie_4', store, fresh);
       else if(s70>=3) _sgpCelebrate('sgp_serie_3', store, fresh);
       else if(s70>=2) _sgpCelebrate('sgp_serie_2', store, fresh);
 
       /* 5. streakweeks100 (pct>=100) : sgp_100_serie_2/3/4 (non-unique → celebrate) */
-      var s100=_sgpUpdateStreak('badgesgp100streak', weekKey, pct>=100);
+      var s100=_sgpUpdateStreak('badge_sgp100_streak', weekKey, pct>=100);
       if(s100>=4) _sgpCelebrate('sgp_100_serie_4', store, fresh);
       else if(s100>=3) _sgpCelebrate('sgp_100_serie_3', store, fresh);
       else if(s100>=2) _sgpCelebrate('sgp_100_serie_2', store, fresh);
