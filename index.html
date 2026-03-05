@@ -2203,6 +2203,11 @@ a.topNavBtn:focus {
   .succesBadge.locked:hover{opacity:0.85}
   .succesBadgeDate{font-size:11px;color:#11a9a6;font-weight:600;margin-top:2px}
   .succesBadge.locked .succesBadgeDate{color:var(--muted);opacity:0.45}
+  .succesBadgeProgress{width:100%;margin-top:4px;text-align:center;font-size:10px;color:var(--muted);font-weight:600;display:flex;flex-direction:column;align-items:center;gap:3px}
+  .succesBadgeProgress span{letter-spacing:0.03em}
+  .succesBadgeBar{width:80%;height:4px;background:var(--border2);border-radius:99px;overflow:hidden}
+  .succesBadgeBarFill{height:100%;background:#11a9a6;border-radius:99px;transition:width 0.3s}
+
   #btnSuccesClose{position:absolute;top:14px;right:16px;background:none;border:none;cursor:pointer;font-size:20px;color:var(--muted);line-height:1;padding:0}
   #btnSuccesClose:hover{color:var(--text)}
   /* MODALE DÉTAIL BADGE */
@@ -6139,6 +6144,53 @@ window.closeMenu  = function() {};
     { id:'sgp_100_serie_4',  label:'SGP 100% Série ×4',    desc:'SGP — 100 % pendant 4 semaines consécutives!',   img:'badges/serie1004semFINAL.png' }
   ];
 
+
+  /* ── Progression par badge (pour affichage compteur) ── */
+  var BADGE_PROGRESS = {
+    'moto_1':          {ls:'badge_moto_count',        max:1},
+    'moto_10':         {ls:'badge_moto_count',        max:10},
+    'moto_50':         {ls:'badge_moto_count',        max:50},
+    'moto_100':        {ls:'badge_moto_count',        max:100},
+    'contrat_1':       {ls:'badge_contrat_count',     max:1},
+    'contrat_10':      {ls:'badge_contrat_count',     max:10},
+    'contrat_50':      {ls:'badge_contrat_count',     max:50},
+    'contrat_100':     {ls:'badge_contrat_count',     max:100},
+    'validation_1':    {ls:'badge_validation_count',  max:1},
+    'validation_10':   {ls:'badge_validation_count',  max:10},
+    'validation_50':   {ls:'badge_validation_count',  max:50},
+    'validation_100':  {ls:'badge_validation_count',  max:100},
+    'slot_double':     {ls:'badge_slot_max',          max:2},
+    'slot_triple':     {ls:'badge_slot_max',          max:3},
+    'frise_5':         {ls:'badge_frise_count',       max:5},
+    'frise_10':        {ls:'badge_frise_count',       max:10},
+    'frise_15':        {ls:'badge_frise_count',       max:15},
+    'crm_20':          {ls:'badge_crm_open_count',    max:20},
+    'fidelite_5j':     {ls:'badge_fidelite_streak',   max:5},
+    'sgp_70_1':        {ls:'badge_sgp70_count',       max:1},
+    'sgp_70_2':        {ls:'badge_sgp70_count',       max:2},
+    'sgp_70_3':        {ls:'badge_sgp70_count',       max:3},
+    'sgp_100_1':       {ls:'badge_sgp100_count',      max:1},
+    'sgp_100_2':       {ls:'badge_sgp100_count',      max:2},
+    'sgp_100_3':       {ls:'badge_sgp100_count',      max:3},
+    'sgp_serie_2':     {ls:'badge_sgp70_streak_st',   max:2, isStreak:true},
+    'sgp_serie_3':     {ls:'badge_sgp70_streak_st',   max:3, isStreak:true},
+    'sgp_serie_4':     {ls:'badge_sgp70_streak_st',   max:4, isStreak:true},
+    'sgp_100_serie_2': {ls:'badge_sgp100_streak_st',  max:2, isStreak:true},
+    'sgp_100_serie_3': {ls:'badge_sgp100_streak_st',  max:3, isStreak:true},
+    'sgp_100_serie_4': {ls:'badge_sgp100_streak_st',  max:4, isStreak:true}
+  };
+  function _getBadgeProgress(id){
+    var cfg=BADGE_PROGRESS[id]; if(!cfg) return null;
+    var cur=0;
+    if(cfg.isStreak){
+      try{var st=JSON.parse(localStorage.getItem(cfg.ls)||'null');cur=st?st.streak:0;}catch(e){}
+    } else {
+      cur=parseInt(localStorage.getItem(cfg.ls)||'0',10);
+    }
+    cur=Math.min(cur,cfg.max);
+    return {cur:cur, max:cfg.max};
+  }
+
   function _getBadgeStore(){try{return JSON.parse(localStorage.getItem('gab_badges')||'{}');}catch(e){return {};}}
   function _saveBadgeStore(b){try{localStorage.setItem('gab_badges',JSON.stringify(b));}catch(e){}}
 
@@ -6242,7 +6294,10 @@ window.closeMenu  = function() {};
       lockEl.style.display='none';
     } else {
       dateEl.style.display='none';
-      lockEl.textContent='Pas encore débloqué';
+      var _dp=_getBadgeProgress(def.id);
+      lockEl.innerHTML=_dp && _dp.max>1
+        ? '🔒 Pas encore débloqué &nbsp;<strong>'+_dp.cur+' / '+_dp.max+'</strong>'
+        : '🔒 Pas encore débloqué';
       lockEl.style.display='';
     }
     pop.style.display='flex';
@@ -6279,7 +6334,16 @@ window.closeMenu  = function() {};
       if(ok&&b.unlockedAt){
         dateHtml='<div class="succesBadgeDate">'+new Date(b.unlockedAt).toLocaleDateString('fr-FR')+'</div>';
       } else {
-        dateHtml='<div class="succesBadgeDate">&#128274; Verrouillé</div>';
+        var _prog=_getBadgeProgress(def.id);
+        var _progHtml='';
+        if(_prog && _prog.max>1){
+          var _pct2=Math.round(_prog.cur/_prog.max*100);
+          _progHtml='<div class="succesBadgeProgress">'
+            +'<span>'+_prog.cur+' / '+_prog.max+'</span>'
+            +'<div class="succesBadgeBar"><div class="succesBadgeBarFill" style="width:'+_pct2+'%"></div></div>'
+            +'</div>';
+        }
+        dateHtml='<div class="succesBadgeDate">&#128274; Verrouillé</div>'+_progHtml;
       }
       card.innerHTML='<img src="'+def.img+'" alt="'+def.label+'">'+dateHtml;
       card.addEventListener('click',function(){ _openBadgeDetail(def,b); });
@@ -6325,7 +6389,7 @@ window.closeMenu  = function() {};
         /* si qualifies, on garde le streak tel quel (pas de ré-incrément) */
       } else {
         var diff=st.lastWeek?_sgpDaysDiff(st.lastWeek,weekKey):0;
-        st.streak = qualifies ? ((diff===7)?(st.streak+1):1) : 0;
+        st.streak = qualifies ? ((diff>=5&&diff<=10)?(st.streak+1):1) : 0;
         st.lastWeek=weekKey;
       }
       try{localStorage.setItem(lsKey+'_st',JSON.stringify(st));}catch(e){}
