@@ -250,6 +250,12 @@ tr.row-disq .r-score{color:var(--danger)!important;}
 
   <span id="versionBadge"></span>
 
+  <!-- Rafraîchir -->
+  <button class="topNavBtn" id="btnRefresh" type="button" onclick="refreshData()" title="Recharger les résultats depuis GitHub">
+    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+    <span>Rafraîchir</span>
+  </button>
+
   <div class="topNavSpacer"></div>
 
   <!-- Identité utilisateur (pill à droite) -->
@@ -369,7 +375,7 @@ tr.row-disq .r-score{color:var(--danger)!important;}
         <p style="margin:6px 0 0;font-size:13px;color:var(--muted)">Glisse le fichier Excel ici ou clique pour sélectionner</p>
         <p id="dropZoneAdminFile" style="margin:4px 0 0;font-size:12px;font-weight:700;color:var(--accent)"></p>
       </div>
-      <input type="file" id="fileInputAdmin" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleFileAdmin(this.files[0])">
+      <input type="file" id="fileInputAdmin" accept=".xlsx,.xls,.csv" style="display:none" multiple onchange="handleFilesAdmin(this.files)">
       <div id="importAdminStatus" style="margin-top:8px;font-size:13px;display:none"></div>
     </div>
 
@@ -526,7 +532,7 @@ tr.row-disq .r-score{color:var(--danger)!important;}
 
 <script>
 // ══ VERSION ══════════════════════════════════════
-var local_version = 'v0.26.0'; // ← modifier ici à chaque mise à jour
+var local_version = 'v0.27.0'; // ← modifier ici à chaque mise à jour
 
 // ══ CONSTANTS ═════════════════════════════════════
 var ADMIN_NOM    = 'LEMTOSH'; // insensible à la casse pour le matching
@@ -1552,8 +1558,8 @@ function ghStatus(msg, ok) {
 function fetchFromGithub() {
   var cfg = loadGithubConfig();
   if (!cfg.repo || !cfg.file) return;
-  // Preview : URL de lecture hardcodée sur GAB_preview
-  var url = 'https://raw.githubusercontent.com/Lemtosh/GAB_preview/main/resultats.json';
+  // Preview : jsDelivr (cache ~1min) + fallback raw.githubusercontent
+  var url = 'https://cdn.jsdelivr.net/gh/Lemtosh/GAB_preview@main/resultats.json';
   fetch(url + '?nocache=' + Date.now())
     .then(function(r){ if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
     .then(function(data){
@@ -1999,8 +2005,7 @@ function openChangeIdentity() {
 // ══ ADMIN UPLOAD INLINE ════════════════════════════
 function handleDropAdmin(e) {
   e.preventDefault();
-  var file = e.dataTransfer.files[0];
-  if (file) handleFileAdmin(file);
+  if (e.dataTransfer.files.length) handleFilesAdmin(e.dataTransfer.files);
 }
 
 function extractDateFromFilename(name) {
@@ -2084,6 +2089,63 @@ function handleFileAdmin(file) {
   };
   reader.readAsArrayBuffer(file);
 }
+
+// ══ IMPORT MULTIPLE ════════════════════════════════════════
+function handleFilesAdmin(files) {
+  if (!files || !files.length) return;
+  var fileArr = Array.from(files);
+  var status  = document.getElementById('importAdminStatus');
+  if (status) { status.style.display = 'block'; status.textContent = '⏳ Traitement de ' + fileArr.length + ' fichier(s)...'; }
+
+  var processed = 0, totalEntries = 0, errors = [];
+
+  function processNext(idx) {
+    if (idx >= fileArr.length) {
+      // Tous traités → push GitHub
+      saveResults(loadResults()); // s'assurer que LS est à jour
+      gData = buildGData(loadResults());
+      try { localStorage.setItem(LS_DATA, JSON.stringify(gData)); } catch(e){}
+      var summary = '✅ ' + processed + ' fichier(s) importé(s) — ' + totalEntries + ' participations';
+      if (errors.length) summary += ' — ⚠️ ' + errors.length + ' erreur(s): ' + errors.join(', ');
+      if (status) status.textContent = summary;
+      showMain();
+      // Auto-push GitHub
+      var cfg = loadGithubConfig();
+      if (cfg && cfg.token) {
+        setTimeout(function(){ ghStatus('', true); pushToGithub(); }, 400);
+      }
+      return;
+    }
+    var file = fileArr[idx];
+    var fileLabel = extractDateFromFilename(file.name) || file.name.replace(/\.[^.]+$/, '');
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        var entries = [];
+        if (file.name.match(/\.csv$/i)) {
+          var text = new TextDecoder('utf-8').decode(e.target.result);
+          entries = parseCSV(text);
+        } else {
+          var wb = XLSX.read(e.target.result, {type:'array'});
+          var ws = wb.Sheets[wb.SheetNames[0]];
+          entries = XLSX.utils.sheet_to_json(ws, {raw:false});
+        }
+        if (!entries || !entries.length) { errors.push(file.name + ' (vide)'); }
+        else {
+          var merged = mergeCSVEntries(entries, fileLabel);
+          saveResults(merged);
+          totalEntries += entries.length;
+          processed++;
+          if (status) status.textContent = '⏳ ' + (idx+1) + '/' + fileArr.length + ' — ' + file.name;
+        }
+      } catch(err) { errors.push(file.name + ' (' + err.message + ')'); }
+      processNext(idx + 1);
+    };
+    reader.readAsArrayBuffer(file);
+  }
+  processNext(0);
+}
+
   // ══ SUPPRESSION SEMAINE ════════════════════════════════════
   function populateWeekDelSelect() {
     var sel = document.getElementById('weekDelSelect');
@@ -2175,6 +2237,14 @@ function handleFileAdmin(file) {
     el.style.color = ok ? 'var(--success)' : 'var(--danger)';
   }
 
+
+  // ══ RAFRAÎCHIR ═════════════════════════════════════════════
+  function refreshData() {
+    var btn = document.getElementById('btnRefresh');
+    if (btn) btn.style.opacity = '0.5';
+    fetchFromGithub();
+    setTimeout(function(){ if (btn) btn.style.opacity = '1'; }, 2000);
+  }
 </script>
 
 <!-- INFO POPUP — style GAB_SGP -->
