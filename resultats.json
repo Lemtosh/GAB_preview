@@ -738,7 +738,9 @@
     "seuilDisq": 10,
     "exceptSeuilZero": [],
     "exceptSeuilDisq": [],
-    "blacklist": [],
+    "blacklist": [
+      "Charlotte ROY"
+    ],
     "managers": []
   },
   "importsLog": [
