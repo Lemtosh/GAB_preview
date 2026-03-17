@@ -566,7 +566,7 @@ tr.row-disq .r-score{color:var(--danger)!important;}
 
 <script>
 // ══ VERSION ══════════════════════════════════════
-var local_version = 'v0.30.1'; // ← modifier ici à chaque mise à jour
+var local_version = 'v0.30.2'; // ← modifier ici à chaque mise à jour
 
 // ══ CONSTANTS ═════════════════════════════════════
 var ADMIN_NOM    = 'LEMTOSH'; // insensible à la casse pour le matching
@@ -2242,7 +2242,13 @@ function handleFilesAdmin(files) {
       var summary = '✅ ' + processed + ' fichier(s) importé(s) — ' + totalEntries + ' participations';
       if (errors.length) summary += ' — ⚠️ ' + errors.length + ' erreur(s): ' + errors.join(', ');
       if (status) status.textContent = summary;
-      showMain();
+      // Forcer re-render complet sans changer d'onglet
+      if (document.getElementById('mainWrap').style.display !== 'none') {
+        buildQSelector(); renderClassement(curQ); renderHistory();
+        if (admin) { renderAdmin(); renderStats(); }
+      } else {
+        showMain();
+      }
       // Auto-push GitHub
       var cfg = loadGithubConfig();
       if (cfg && cfg.token) {
