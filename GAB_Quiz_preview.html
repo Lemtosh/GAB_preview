@@ -207,6 +207,15 @@ tr.row-disq .r-score{color:var(--danger)!important;}
 .champion-crown{font-size:28px;line-height:1;margin-bottom:6px;}
 .champion-name{font-size:15px;font-weight:800;color:var(--text);margin-top:8px;}
 .champion-score{font-size:22px;font-weight:900;color:#f59e0b;margin-top:2px;}
+
+  .week-del-row { display:flex; gap:8px; margin-top:12px; flex-wrap:wrap; align-items:center; }
+  .week-del-select { flex:1; min-width:160px; padding:7px 12px; font-size:13px; border-radius:8px;
+    border:1px solid var(--border); background:var(--bg); color:var(--text); outline:none; }
+  .week-del-select:focus { border-color:var(--accent); }
+  .week-del-btn { padding:7px 14px; font-size:12px; font-weight:700; border-radius:8px; border:none;
+    background:var(--danger); color:#fff; cursor:pointer; transition:filter .15s; white-space:nowrap; }
+  .week-del-btn:hover { filter:brightness(1.1); }
+  .week-del-status { font-size:12px; margin-top:6px; display:none; }
 </style>
 </head>
 <body>
@@ -364,6 +373,17 @@ tr.row-disq .r-score{color:var(--danger)!important;}
       <div id="importAdminStatus" style="margin-top:8px;font-size:13px;display:none"></div>
     </div>
 
+    <!-- SUPPRIMER UNE SEMAINE -->
+    <div class="param-card" style="margin-bottom:16px">
+      <div class="param-row"><span class="param-lbl">Supprimer une semaine importée</span></div>
+      <div class="param-desc">Supprime toutes les données d'une semaine du JSON (scores + entrée importsLog) et re-pousse vers GitHub.</div>
+      <div class="week-del-row">
+        <select class="week-del-select" id="weekDelSelect"><option value="">— Choisir une semaine —</option></select>
+        <button class="week-del-btn" onclick="deleteWeek()">Supprimer</button>
+      </div>
+      <div class="week-del-status" id="weekDelStatus"></div>
+    </div>
+
     <!-- PARAMÈTRES ADMIN -->
     <div class="admin-section">
       <div class="section-ttl">⚙️ Paramètres du quiz</div>
@@ -506,7 +526,7 @@ tr.row-disq .r-score{color:var(--danger)!important;}
 
 <script>
 // ══ VERSION ══════════════════════════════════════
-var local_version = 'v0.25.0'; // ← modifier ici à chaque mise à jour
+var local_version = 'v0.26.0'; // ← modifier ici à chaque mise à jour
 
 // ══ CONSTANTS ═════════════════════════════════════
 var ADMIN_NOM    = 'LEMTOSH'; // insensible à la casse pour le matching
@@ -1280,6 +1300,7 @@ function renderAdmin() {
     html += '</tbody></table></div>';
   }
   wrap.innerHTML=html;
+  populateWeekDelSelect();
 }
 
 // ══ IDENTITY MODAL ═════════════════════════════════
@@ -2063,6 +2084,98 @@ function handleFileAdmin(file) {
   };
   reader.readAsArrayBuffer(file);
 }
+  // ══ SUPPRESSION SEMAINE ════════════════════════════════════
+  function populateWeekDelSelect() {
+    var sel = document.getElementById('weekDelSelect');
+    if (!sel) return;
+    var raw = loadResults();
+    var weeks = [];
+    if (raw && raw.importsLog && raw.importsLog.length) {
+      raw.importsLog.forEach(function(l){ if (weeks.indexOf(l.week) < 0) weeks.push(l.week); });
+    } else if (gData && gData.importsLog) {
+      gData.importsLog.forEach(function(l){ if (weeks.indexOf(l.week) < 0) weeks.push(l.week); });
+    }
+    weeks.sort(function(a,b){
+      var pa=a.split('/'), pb=b.split('/');
+      return new Date(pa[2],pa[1]-1,pa[0]) - new Date(pb[2],pb[1]-1,pb[0]);
+    });
+    sel.innerHTML = '<option value="">— Choisir une semaine —</option>';
+    weeks.forEach(function(w){
+      sel.innerHTML += '<option value="'+w+'">Semaine du '+w+'</option>';
+    });
+  }
+
+  function deleteWeek() {
+    var sel    = document.getElementById('weekDelSelect');
+    var status = document.getElementById('weekDelStatus');
+    var week   = sel ? sel.value : '';
+    if (!week) { weekDelStatus('⚠️ Sélectionne une semaine', false); return; }
+    if (!confirm('Supprimer toutes les données de la semaine du ' + week + ' ?
+Cette action re-poussera le JSON vers GitHub.')) return;
+
+    var raw = loadResults() || {};
+    if (!raw.participants) { weekDelStatus('❌ Aucune donnée locale', false); return; }
+
+    // Supprimer le score de cette semaine pour chaque participant
+    raw.participants.forEach(function(p){
+      if (p.scores && p.scores[week] !== undefined) delete p.scores[week];
+    });
+
+    // Supprimer les entrées importsLog pour cette semaine
+    if (raw.importsLog) {
+      raw.importsLog = raw.importsLog.filter(function(l){ return l.week !== week; });
+    }
+
+    // Sauvegarder localement
+    saveResults(raw);
+    gData = buildGData(raw);
+    try { localStorage.setItem(LS_DATA, JSON.stringify(gData)); } catch(e){}
+
+    // Re-pousser vers GitHub
+    var cfg = loadGithubConfig();
+    if (!cfg.token) { weekDelStatus('✅ Supprimé localement (pas de token pour push)', true); renderAdmin(); return; }
+
+    weekDelStatus('⏳ Push en cours...', true);
+    var _params    = loadParams();
+    var _blacklist = loadBlacklist();
+    var _managers  = loadManagers();
+    var data = {
+      version: '0.26',
+      annee:   new Date().getFullYear(),
+      participants: raw.participants,
+      config: Object.assign({}, raw.config || {}, {
+        seuilZero: _params.seuilZero, seuilDisq: _params.seuilDisq,
+        exceptSeuilZero: _params.exceptSeuilZero, exceptSeuilDisq: _params.exceptSeuilDisq,
+        blacklist: _blacklist, managers: _managers
+      }),
+      importsLog: raw.importsLog || []
+    };
+
+    var url     = 'https://api.github.com/repos/' + cfg.repo.replace(/\/+$/,'') + '/contents/' + cfg.file;
+    var content = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2))));
+    fetch(url, { headers:{'Authorization':'token '+cfg.token,'Accept':'application/vnd.github.v3+json'} })
+      .then(function(r){ return r.json(); })
+      .then(function(existing){
+        var body = { message:'GAB Quiz — suppression semaine '+week, content:content };
+        if (existing.sha) body.sha = existing.sha;
+        return fetch(url, { method:'PUT', headers:{'Authorization':'token '+cfg.token,'Content-Type':'application/json','Accept':'application/vnd.github.v3+json'}, body:JSON.stringify(body) });
+      })
+      .then(function(r){ if (!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
+      .then(function(){
+        weekDelStatus('✅ Semaine '+week+' supprimée et JSON mis à jour', true);
+        renderAdmin(); renderClassement(curQ); renderHistory();
+      })
+      .catch(function(e){ weekDelStatus('❌ '+e.message, false); });
+  }
+
+  function weekDelStatus(msg, ok) {
+    var el = document.getElementById('weekDelStatus');
+    if (!el) return;
+    el.textContent = msg;
+    el.style.display = 'block';
+    el.style.color = ok ? 'var(--success)' : 'var(--danger)';
+  }
+
 </script>
 
 <!-- INFO POPUP — style GAB_SGP -->
