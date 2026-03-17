@@ -506,7 +506,7 @@ tr.row-disq .r-score{color:var(--danger)!important;}
 
 <script>
 // ══ VERSION ══════════════════════════════════════
-var local_version = 'v0.23.0'; // ← modifier ici à chaque mise à jour
+var local_version = 'v0.24.0'; // ← modifier ici à chaque mise à jour
 
 // ══ CONSTANTS ═════════════════════════════════════
 var ADMIN_NOM    = 'LEMTOSH'; // insensible à la casse pour le matching
@@ -554,13 +554,17 @@ document.addEventListener('DOMContentLoaded', function() {
   admin   = uid && uid.nom === ADMIN_SECRET;
   manager = !admin && uid && isManager();
 
-  // Restaurer depuis LS_RESULTS (JSON cumulé) ou LS_DATA (fallback)
-  var resultsData = loadResults();
-  if (resultsData) {
-    gData = buildGData(resultsData);
-  } else {
-    var cached = localStorage.getItem(LS_DATA);
-    if (cached) { try { gData = JSON.parse(cached); } catch(e){ gData = null; } }
+  // v0.24 : si GitHub configuré, ne pas pré-charger le LS — la vérité vient du JSON GitHub
+  var _ghCfgBoot = loadGithubConfig();
+  if (!_ghCfgBoot || !_ghCfgBoot.repo || !_ghCfgBoot.file) {
+    // Pas de GitHub configuré : fallback localStorage normal
+    var resultsData = loadResults();
+    if (resultsData) {
+      gData = buildGData(resultsData);
+    } else {
+      var cached = localStorage.getItem(LS_DATA);
+      if (cached) { try { gData = JSON.parse(cached); } catch(e){ gData = null; } }
+    }
   }
 
   // Remplir les champs GitHub dès le boot (token survivra au refresh)
@@ -1261,16 +1265,13 @@ function renderAdmin() {
       '<th style="padding:6px 8px;color:var(--muted);font-weight:600;font-size:11px;border-bottom:1px solid var(--border);text-align:center">Participations</th>' +
       '</tr></thead><tbody>';
     logs.forEach(function(l){
-      /* Extraire la date depuis le champ label (nom de fichier) : cherche ddmmyyyy ou dd/mm/yyyy */
       var dateStr = '';
       if (l.label) {
         var m = l.label.match(/(\d{2})[\/-](\d{2})[\/-](\d{4})/);
         if (!m) m = l.label.match(/(\d{2})(\d{2})(\d{4})/);
         if (m) dateStr = m[1]+'/'+m[2]+'/'+m[3];
         else dateStr = l.label;
-      } else if (l.week) {
-        dateStr = l.week;
-      }
+      } else if (l.week) { dateStr = l.week; }
       html += '<tr>' +
         '<td style="padding:6px 8px;font-weight:600">' + dateStr + '</td>' +
         '<td style="padding:6px 8px;text-align:center">' + (l.count||'—') + '</td>' +
@@ -1540,11 +1541,8 @@ function fetchFromGithub() {
           return {nom:p.nom, prenom:p.prenom, scores:p.scores||{}};
         });
       }
-      // Merger importsLog local si le JSON GitHub n'en a pas encore
-      if (!data.importsLog || !data.importsLog.length) {
-        var _localRaw = loadResults();
-        if (_localRaw && _localRaw.importsLog) data.importsLog = _localRaw.importsLog;
-      }
+      // v0.24 : le JSON GitHub est la seule source de vérité — pas de merge depuis LS
+      if (!data.importsLog) data.importsLog = [];
       saveResults(data);
       gData = buildGData(data);
       try { localStorage.setItem(LS_DATA, JSON.stringify(gData)); } catch(e){}
