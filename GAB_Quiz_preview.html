@@ -532,7 +532,7 @@ tr.row-disq .r-score{color:var(--danger)!important;}
 
 <script>
 // ══ VERSION ══════════════════════════════════════
-var local_version = 'v0.29.0'; // ← modifier ici à chaque mise à jour
+var local_version = 'v0.29.1'; // ← modifier ici à chaque mise à jour
 
 // ══ CONSTANTS ═════════════════════════════════════
 var ADMIN_NOM    = 'LEMTOSH'; // insensible à la casse pour le matching
@@ -1568,7 +1568,8 @@ function fetchFromGithub() {
   var cfg = loadGithubConfig();
   if (!cfg.repo || !cfg.file) return;
   // Preview : jsDelivr (cache ~1min) + fallback raw.githubusercontent
-  var url = 'https://cdn.jsdelivr.net/gh/Lemtosh/GAB_preview@main/resultats.json';
+  // Raw GitHub = pas de cache CDN, toujours le fichier le plus récent
+  var url = 'https://raw.githubusercontent.com/' + cfg.repo + '/main/' + cfg.file;
   fetch(url + '?nocache=' + Date.now())
     .then(function(r){ if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
     .then(function(data){
@@ -1594,7 +1595,24 @@ function fetchFromGithub() {
         localStorage.setItem(LS_MANAGERS,  JSON.stringify(data.config.managers  || []));
       } catch(e){}
       saveResults(data);
-      gData = buildGData(data);
+      var newGData = buildGData(data);
+      // Ne pas écraser gData si on a déjà plus de semaines en mémoire
+      var currentWeeks = gData ? Object.keys(
+        gData.participants.reduce(function(acc,p){
+          ['T1','T2','T3','T4'].forEach(function(q){
+            if(p.quarters&&p.quarters[q]) p.quarters[q].weeks.forEach(function(w){acc[w.date]=1;});
+          }); return acc;
+        }, {})
+      ).length : 0;
+      var newWeeks = newGData ? Object.keys(
+        newGData.participants.reduce(function(acc,p){
+          ['T1','T2','T3','T4'].forEach(function(q){
+            if(p.quarters&&p.quarters[q]) p.quarters[q].weeks.forEach(function(w){acc[w.date]=1;});
+          }); return acc;
+        }, {})
+      ).length : 0;
+      if (!gData || newWeeks >= currentWeeks) gData = newGData;
+      else { console.log('[GAB Quiz] Fetch ignoré — gData plus récent ('+currentWeeks+' sem > '+newWeeks+' sem)'); }
       try { localStorage.setItem(LS_DATA, JSON.stringify(gData)); } catch(e){}
       console.log('[GAB Quiz] Résultats chargés depuis GitHub ✅');
       // Toujours appeler showProperView pour garantir l'affichage correct
@@ -2095,7 +2113,24 @@ function handleFileAdmin(file) {
       }
       var data = mergeCSVEntries(entries, fileLabel);
       saveResults(data);
-      gData = buildGData(data);
+      var newGData = buildGData(data);
+      // Ne pas écraser gData si on a déjà plus de semaines en mémoire
+      var currentWeeks = gData ? Object.keys(
+        gData.participants.reduce(function(acc,p){
+          ['T1','T2','T3','T4'].forEach(function(q){
+            if(p.quarters&&p.quarters[q]) p.quarters[q].weeks.forEach(function(w){acc[w.date]=1;});
+          }); return acc;
+        }, {})
+      ).length : 0;
+      var newWeeks = newGData ? Object.keys(
+        newGData.participants.reduce(function(acc,p){
+          ['T1','T2','T3','T4'].forEach(function(q){
+            if(p.quarters&&p.quarters[q]) p.quarters[q].weeks.forEach(function(w){acc[w.date]=1;});
+          }); return acc;
+        }, {})
+      ).length : 0;
+      if (!gData || newWeeks >= currentWeeks) gData = newGData;
+      else { console.log('[GAB Quiz] Fetch ignoré — gData plus récent ('+currentWeeks+' sem > '+newWeeks+' sem)'); }
       // S'assurer que importsLog est bien dans gData depuis data
       if (!gData.importsLog || !gData.importsLog.length) gData.importsLog = data.importsLog || [];
       var status = document.getElementById('importAdminStatus');
