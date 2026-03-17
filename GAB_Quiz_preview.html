@@ -566,7 +566,7 @@ tr.row-disq .r-score{color:var(--danger)!important;}
 
 <script>
 // ══ VERSION ══════════════════════════════════════
-var local_version = 'v0.30.0'; // ← modifier ici à chaque mise à jour
+var local_version = 'v0.30.1'; // ← modifier ici à chaque mise à jour
 
 // ══ CONSTANTS ═════════════════════════════════════
 var ADMIN_NOM    = 'LEMTOSH'; // insensible à la casse pour le matching
@@ -1045,16 +1045,19 @@ function renderClassement(q) {
     var moy = p.quarters[q].moyenne;
     if (moy !== _pgPrev) { _pgRank++; _pgPrev = moy; _pg.push({rank:_pgRank, moy:moy}); }
   });
-  var top3Moys = _pg.slice(0,3).map(function(g){ return g.moy; });
-  var tablePs = normal.filter(function(p){ return top3Moys.indexOf(p.quarters[q].moyenne) < 0; });
+  // Champion (rank1) + podium 1er/2ème/3ème (ranks 2/3/4) = 4 groupes exclus du tableau
+  var top4Moys = _pg.slice(0,4).map(function(g){ return g.moy; });
+  var tablePs = normal.filter(function(p){ return top4Moys.indexOf(p.quarters[q].moyenne) < 0; });
 
-  var rank = 0, prev = null;
+  // Rang affiché : 4 groupes exclus → le tableau commence à la 4ème place visible
+  // On recalcule le vrai rang en comptant les ex-æquo
+  var rankOffset = top4Moys.length; // nombre de groupes dans le podium+champion
+  var rank = 0, prev = null, displayRank = rankOffset;
   tablePs.forEach(function(p, i){
     var moy = p.quarters[q].moyenne;
-    rank = i + 1 + top3Moys.length; // commencer après le podium (4ème, 5ème...)
-    // Pour ex-æquo : garder le même rang
-    if (moy !== prev) { prev = moy; }
-    var med  = rank===1?'🥇':rank===2?'🥈':rank===3?'🥉':'';
+    if (moy !== prev) { displayRank++; prev = moy; }
+    rank = displayRank;
+    var med  = '';
     var isMe = uid && matchId(p, uid);
     var tr   = document.createElement('tr');
     tr.innerHTML =
@@ -1103,10 +1106,10 @@ function renderPodium(ps, q) {
     groups[groups.length-1].people.push(p);
   });
 
-  var gChamp = groups.find(function(g){ return g.rank===1; });
-  var g1     = groups.find(function(g){ return g.rank===2; });
-  var g2     = groups.find(function(g){ return g.rank===3; });
-  var g3     = groups.find(function(g){ return g.rank===4; });
+  var gChamp = groups.find(function(g){ return g.rank===1; }); // Champion hors classement
+  var g1     = groups.find(function(g){ return g.rank===2; }); // 🥇 1er du podium
+  var g2     = groups.find(function(g){ return g.rank===3; }); // 🥈 2ème du podium
+  var g3     = groups.find(function(g){ return g.rank===4; }); // 🥉 3ème du podium
 
   var html = '';
 
