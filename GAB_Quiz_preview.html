@@ -222,6 +222,24 @@ tr.row-disq .r-score{color:var(--danger)!important;}
     background:var(--danger); color:#fff; cursor:pointer; transition:filter .15s; white-space:nowrap; }
   .week-del-btn:hover { filter:brightness(1.1); }
   .week-del-status { font-size:12px; margin-top:6px; display:none; }
+
+/* ── RESET JSON MODAL ── */
+.reset-check-list { display:flex; flex-direction:column; gap:10px; margin:16px 0; }
+.reset-check-item { display:flex; align-items:center; gap:10px; background:var(--bg);
+  border:1px solid var(--border); border-radius:8px; padding:10px 14px; cursor:pointer;
+  transition:border-color .15s, background .15s; }
+.reset-check-item:hover { border-color:var(--accent); background:var(--al); }
+.reset-check-item input[type=checkbox] { width:16px; height:16px; accent-color:var(--danger); cursor:pointer; flex-shrink:0; }
+.reset-check-item label { font-size:13px; font-weight:600; cursor:pointer; flex:1; }
+.reset-check-item .reset-sub { font-size:11px; color:var(--muted); margin-top:2px; display:block; }
+.reset-confirm-step { display:none; }
+.reset-confirm-step.active { display:block; }
+.btn-danger { padding:10px; font-size:14px; font-weight:700; border-radius:10px;
+  border:none; background:var(--danger); color:#fff; cursor:pointer; width:100%;
+  transition:filter .15s; margin-top:8px; }
+.btn-danger:hover { filter:brightness(1.1); }
+.reset-select-all { font-size:12px; font-weight:600; color:var(--accent);
+  background:none; border:none; cursor:pointer; padding:0; margin-bottom:4px; text-decoration:underline; }
 </style>
 </head>
 <body>
@@ -497,6 +515,13 @@ tr.row-disq .r-score{color:var(--danger)!important;}
       </div>
     </div>
 
+    
+    <!-- RESET JSON -->
+    <div class="param-card" style="border-color:rgba(229,62,62,.3);margin-bottom:16px;">
+      <div class="param-row"><span class="param-lbl" style="color:var(--danger)">⚠️ Reset JSON</span></div>
+      <div class="param-desc">Remet à zéro les éléments sélectionnés dans le JSON et pousse sur GitHub.</div>
+      <button class="param-save-btn" style="background:var(--danger);margin-top:12px;" onclick="openResetModal()">Ouvrir le reset</button>
+    </div>
     <!-- GITHUB CONFIG -->
       <div class="param-card">
         <div class="param-row">
@@ -566,7 +591,7 @@ tr.row-disq .r-score{color:var(--danger)!important;}
 
 <script>
 // ══ VERSION ══════════════════════════════════════
-var local_version = 'v0.31'; // ← modifier ici à chaque mise à jour
+var local_version = 'v0.32'; // ← modifier ici à chaque mise à jour
 
 // ══ CONSTANTS ═════════════════════════════════════
 var ADMIN_NOM    = 'LEMTOSH'; // insensible à la casse pour le matching
@@ -2480,6 +2505,127 @@ function handleFilesAdmin(files) {
     if (label) { label.textContent='Chargement…'; }
     fetchFromGithub();
   }
+
+// ══ RESET JSON ════════════════════════════════════
+function openResetModal() {
+  // reset état
+  ['chkScores','chkConfig','chkManagers','chkBlacklist'].forEach(function(id){
+    document.getElementById(id).checked = false;
+  });
+  document.getElementById('resetStep1').style.display = 'block';
+  document.getElementById('resetStep2').style.display = 'none';
+  document.getElementById('resetErr').style.display = 'none';
+  document.getElementById('resetErr').textContent = '';
+  document.getElementById('resetModal').classList.add('open');
+}
+
+function closeResetModal() {
+  document.getElementById('resetModal').classList.remove('open');
+}
+
+function toggleResetCheck(id) {
+  var cb = document.getElementById(id);
+  cb.checked = !cb.checked;
+}
+
+function resetSelectAll() {
+  ['chkScores','chkConfig','chkManagers','chkBlacklist'].forEach(function(id){
+    document.getElementById(id).checked = true;
+  });
+}
+
+function resetStep2() {
+  var selected = [];
+  if (document.getElementById('chkScores').checked)    selected.push('Scores & imports (participants, importsLog)');
+  if (document.getElementById('chkConfig').checked)    selected.push('Configuration (seuilZero, seuilDisq, exceptions)');
+  if (document.getElementById('chkManagers').checked)  selected.push('Managers');
+  if (document.getElementById('chkBlacklist').checked) selected.push('Blacklist');
+  if (!selected.length) {
+    var e = document.getElementById('resetErr');
+    e.textContent = 'Sélectionne au moins un élément.';
+    e.style.display = 'block';
+    return;
+  }
+  document.getElementById('resetStep2Desc').innerHTML =
+    'Les éléments suivants seront remis à zéro&nbsp;:<br><strong>' + selected.join('<br>') + '</strong>';
+  document.getElementById('resetStep1').style.display = 'none';
+  document.getElementById('resetStep2').style.display = 'block';
+  document.getElementById('resetStatus').style.display = 'none';
+}
+
+function resetBackStep1() {
+  document.getElementById('resetStep1').style.display = 'block';
+  document.getElementById('resetStep2').style.display = 'none';
+}
+
+async function executeReset() {
+  var btn = document.getElementById('resetConfirmBtn');
+  var statusEl = document.getElementById('resetStatus');
+  btn.disabled = true;
+  btn.textContent = '⏳ Reset en cours...';
+  statusEl.style.display = 'block';
+  statusEl.style.color = 'var(--muted)';
+  statusEl.textContent = 'Mise à jour du JSON...';
+
+  // Charger le JSON actuel
+  var data = loadResults();
+  if (!data) data = { annee: new Date().getFullYear(), generated:'', participants:[], importsLog:[], config:{} };
+  if (!data.config) data.config = {};
+
+  // Appliquer les resets sélectionnés
+  if (document.getElementById('chkScores').checked) {
+    data.participants = [];
+    data.importsLog   = [];
+  }
+  if (document.getElementById('chkConfig').checked) {
+    data.config.seuilZero      = 6;
+    data.config.seuilDisq      = 10;
+    data.config.exceptSeuilZero = [];
+    data.config.exceptSeuilDisq = [];
+  }
+  if (document.getElementById('chkManagers').checked)  data.config.managers  = [];
+  if (document.getElementById('chkBlacklist').checked) data.config.blacklist = [];
+
+  data.generated = new Date().toISOString();
+  saveResults(data);
+  gData = buildGData(data);
+  try { localStorage.setItem(LS_DATA, JSON.stringify(gData)); } catch(e){}
+
+  // Push GitHub
+  var cfg = loadGithubConfig();
+  if (!cfg || !cfg.token) {
+    statusEl.style.color = 'var(--danger)';
+    statusEl.textContent = '⚠️ Aucun token GitHub configuré — reset appliqué en local uniquement.';
+    btn.disabled = false; btn.textContent = 'Confirmer le reset';
+    setTimeout(function(){ closeResetModal(); showMain(); }, 2000);
+    return;
+  }
+
+  try {
+    var url = 'https://api.github.com/repos/' + cfg.repo + '/contents/' + cfg.file;
+    var getResp = await fetch(url, { headers:{ 'Authorization':'token '+cfg.token, 'Accept':'application/vnd.github.v3+json' }});
+    var fileMeta = await getResp.json();
+    var newContent = btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2))));
+    var putResp = await fetch(url, {
+      method:'PUT',
+      headers:{ 'Authorization':'token '+cfg.token, 'Content-Type':'application/json', 'Accept':'application/vnd.github.v3+json' },
+      body: JSON.stringify({ message:'reset JSON v0.32 - ' + new Date().toISOString(), content: newContent, sha: fileMeta.sha })
+    });
+    if (putResp.ok) {
+      statusEl.style.color = 'var(--success)';
+      statusEl.textContent = '✅ Reset effectué et poussé sur GitHub.';
+      setTimeout(function(){ closeResetModal(); showMain(); renderAdmin(); renderParamTags(); renderBlacklistTags(); renderManagersTags(); }, 1500);
+    } else {
+      var err = await putResp.json();
+      statusEl.style.color = 'var(--danger)';
+      statusEl.textContent = '❌ Erreur GitHub : ' + (err.message || putResp.status);
+    }
+  } catch(ex) {
+    statusEl.style.color = 'var(--danger)';
+    statusEl.textContent = '❌ Erreur réseau : ' + ex.message;
+  }
+  btn.disabled = false; btn.textContent = 'Confirmer le reset';
+}
 </script>
 
 <!-- INFO POPUP — style GAB_SGP -->
@@ -2501,6 +2647,60 @@ function handleFilesAdmin(files) {
     </div>
     <div class="ccFooter">
       <button type="button" class="ccPrimary" onclick="document.getElementById('infoPopup').style.display='none';">Fermer</button>
+    </div>
+  </div>
+</div>
+
+<!-- RESET JSON MODAL -->
+<div class="modal-ov" id="resetModal" onclick="if(event.target===this)closeResetModal()">
+  <div class="modal-box" style="max-width:420px;">
+    <!-- STEP 1 : sélection -->
+    <div id="resetStep1">
+      <h2 style="color:var(--danger)">⚠️ Reset JSON</h2>
+      <p style="font-size:13px;color:var(--muted);margin-bottom:4px;">Sélectionne les éléments à remettre à zéro. L'opération sera poussée sur GitHub.</p>
+      <button class="reset-select-all" onclick="resetSelectAll()">Tout sélectionner</button>
+      <div class="reset-check-list">
+        <div class="reset-check-item" onclick="toggleResetCheck('chkScores')">
+          <input type="checkbox" id="chkScores" onclick="event.stopPropagation();"/>
+          <label for="chkScores">Scores &amp; imports
+            <span class="reset-sub">participants, importsLog</span>
+          </label>
+        </div>
+        <div class="reset-check-item" onclick="toggleResetCheck('chkConfig')">
+          <input type="checkbox" id="chkConfig" onclick="event.stopPropagation();"/>
+          <label for="chkConfig">Configuration
+            <span class="reset-sub">seuilZero, seuilDisq, exceptions</span>
+          </label>
+        </div>
+        <div class="reset-check-item" onclick="toggleResetCheck('chkManagers')">
+          <input type="checkbox" id="chkManagers" onclick="event.stopPropagation();"/>
+          <label for="chkManagers">Managers
+            <span class="reset-sub">liste des managers</span>
+          </label>
+        </div>
+        <div class="reset-check-item" onclick="toggleResetCheck('chkBlacklist')">
+          <input type="checkbox" id="chkBlacklist" onclick="event.stopPropagation();"/>
+          <label for="chkBlacklist">Blacklist
+            <span class="reset-sub">participants exclus</span>
+          </label>
+        </div>
+      </div>
+      <div class="modal-err" id="resetErr"></div>
+      <div style="display:flex;gap:8px;margin-top:8px;">
+        <button class="btn-sm" style="flex:1;" onclick="closeResetModal()">Annuler</button>
+        <button class="btn-danger" style="margin-top:0;flex:1;" onclick="resetStep2()">Continuer →</button>
+      </div>
+    </div>
+    <!-- STEP 2 : confirmation -->
+    <div id="resetStep2" style="display:none;">
+      <h2 style="color:var(--danger)">⚠️ Confirmation finale</h2>
+      <p id="resetStep2Desc" style="font-size:13px;color:var(--muted);line-height:1.6;"></p>
+      <p style="font-size:13px;font-weight:700;margin-top:12px;">Cette action est irréversible. Les données seront écrasées sur GitHub.</p>
+      <div style="display:flex;gap:8px;margin-top:16px;">
+        <button class="btn-sm" style="flex:1;" onclick="resetBackStep1()">← Retour</button>
+        <button class="btn-danger" style="margin-top:0;flex:1;" id="resetConfirmBtn" onclick="executeReset()">Confirmer le reset</button>
+      </div>
+      <div id="resetStatus" style="font-size:12px;margin-top:10px;display:none;"></div>
     </div>
   </div>
 </div>
