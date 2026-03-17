@@ -1406,7 +1406,12 @@ function confirmId() {
 
   if (!isAdminAttempt && gData) {
     var found = gData.participants.find(function(p){ return matchId(p, {nom:nom, prenom:prenom}); });
-    if (!found) {
+    // FIX v0.31 : vérifier aussi dans la liste managers (peut n'avoir aucun score)
+    var fullName = (prenom + ' ' + nom).toLowerCase();
+    var isManagerAttempt = (gData.config && gData.config.managers || []).some(function(m){
+      return m.toLowerCase() === fullName || m.toLowerCase() === (nom + ' ' + prenom).toLowerCase();
+    });
+    if (!found && !isManagerAttempt) {
       errEl.innerHTML = 'Participant non trouvé.<br>Vérifie l\'orthographe (ex&nbsp;: <em>DUPONT</em>, <em>Marie</em>).';
       errEl.style.display='block'; return;
     }
@@ -2228,6 +2233,17 @@ function handleFileAdmin(file) {
 function handleFilesAdmin(files) {
   if (!files || !files.length) return;
   var fileArr = Array.from(files);
+  // FIX v0.31 : trier les fichiers par date extraite du nom (ordre chronologique)
+  // afin que les NF soient correctement déduits lors d'un import multiple
+  fileArr.sort(function(a, b) {
+    var da = extractDateFromFilename(a.name) || '';
+    var db = extractDateFromFilename(b.name) || '';
+    var pa = da.split('/'), pb = db.split('/');
+    if (pa.length === 3 && pb.length === 3) {
+      return new Date(pa[2], pa[1]-1, pa[0]) - new Date(pb[2], pb[1]-1, pb[0]);
+    }
+    return a.name.localeCompare(b.name);
+  });
   var status  = document.getElementById('importAdminStatus');
   if (status) { status.style.display = 'block'; status.textContent = '⏳ Traitement de ' + fileArr.length + ' fichier(s)...'; }
 
