@@ -69,15 +69,21 @@ a.topNavBtn:hover,a.topNavBtn:focus{color:var(--accent)!important;background:rgb
 .now-dot{display:inline-block;width:6px;height:6px;border-radius:50%;background:currentColor;margin-left:4px;vertical-align:middle;opacity:.7;}
 
 /* PODIUM */
-.podium{display:flex;align-items:flex-end;justify-content:center;gap:12px;margin-bottom:28px;padding:24px 0 0;flex-wrap:wrap;}
-.podium-slot{display:flex;flex-direction:column;align-items:center;gap:4px;}
-.podium-rank-lbl{font-size:11px;color:var(--muted);font-weight:600;margin-bottom:2px;}
-.podium-avatars{display:flex;gap:4px;flex-wrap:wrap;justify-content:center;}
-.podium-avatar{width:44px;height:44px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#fff;flex-shrink:0;}
-.podium-names{text-align:center;font-size:12px;font-weight:700;line-height:1.4;max-width:120px;}
-.podium-names small{font-weight:400;font-size:10px;color:var(--muted);}
-.podium-score{font-size:20px;font-weight:800;color:var(--accent);}
-.podium-bar{width:72px;border-radius:8px 8px 0 0;border:1px solid var(--border);}
+.podium{display:flex;align-items:flex-end;justify-content:center;gap:20px;margin-bottom:28px;padding:24px 0 0;flex-wrap:wrap;}
+.podium-slot{display:flex;flex-direction:column;align-items:center;}
+.podium-rank-lbl{font-size:12px;color:var(--muted);font-weight:700;margin-bottom:8px;letter-spacing:.02em;}
+.podium-avatars{display:flex;gap:5px;flex-wrap:wrap;justify-content:center;margin-bottom:8px;}
+.podium-avatar{border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;flex-shrink:0;box-shadow:0 2px 10px rgba(0,0,0,.18);}
+.podium-names{text-align:center;line-height:1.5;max-width:140px;margin-bottom:6px;}
+.podium-names .p-prenom{font-size:12px;font-weight:700;display:block;}
+.podium-names .p-nom{font-weight:400;font-size:10px;color:var(--muted);display:block;}
+.podium-names .p-me{font-size:9px;margin-left:3px;}
+.podium-exaequo{font-size:10px;color:var(--muted);font-style:italic;margin-bottom:2px;text-align:center;}
+.podium-score{font-size:22px;font-weight:900;color:var(--accent);margin-bottom:8px;}
+.podium-bar{width:90px;border-radius:8px 8px 0 0;border:1px solid var(--border);}
+.podium-slot.rank-1 .podium-bar{background:linear-gradient(180deg,rgba(245,158,11,.3),rgba(245,158,11,.07));border-color:rgba(245,158,11,.35);}
+.podium-slot.rank-2 .podium-bar{background:linear-gradient(180deg,rgba(148,163,184,.3),rgba(148,163,184,.07));border-color:rgba(148,163,184,.35);}
+.podium-slot.rank-3 .podium-bar{background:linear-gradient(180deg,rgba(184,115,51,.3),rgba(184,115,51,.07));border-color:rgba(184,115,51,.35);}
 
 /* TABLE */
 .rank-wrap{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
@@ -252,8 +258,8 @@ tr.row-disq .r-score{color:var(--danger)!important;}
 
   <!-- Rafraîchir -->
   <button class="topNavBtn" id="btnRefresh" type="button" onclick="refreshData()" title="Recharger les résultats depuis GitHub">
-    <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
-    <span>Rafraîchir</span>
+    <svg id="refreshIcon" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transition:transform 0.7s ease"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+    <span id="refreshLabel">Rafraîchir</span>
   </button>
 
   <div class="topNavSpacer"></div>
@@ -560,7 +566,7 @@ tr.row-disq .r-score{color:var(--danger)!important;}
 
 <script>
 // ══ VERSION ══════════════════════════════════════
-var local_version = 'v0.29.3'; // ← modifier ici à chaque mise à jour
+var local_version = 'v0.30.0'; // ← modifier ici à chaque mise à jour
 
 // ══ CONSTANTS ═════════════════════════════════════
 var ADMIN_NOM    = 'LEMTOSH'; // insensible à la casse pour le matching
@@ -1097,69 +1103,89 @@ function renderPodium(ps, q) {
     groups[groups.length-1].people.push(p);
   });
 
-  var gChamp = groups.find(function(g){ return g.rank===1; }); // Champion = 1er du trimestre
-  var g1     = groups.find(function(g){ return g.rank===2; }); // 1er du podium
-  var g2     = groups.find(function(g){ return g.rank===3; }); // 2ème
-  var g3     = groups.find(function(g){ return g.rank===4; }); // 3ème
+  var gChamp = groups.find(function(g){ return g.rank===1; });
+  var g1     = groups.find(function(g){ return g.rank===2; });
+  var g2     = groups.find(function(g){ return g.rank===3; });
+  var g3     = groups.find(function(g){ return g.rank===4; });
 
   var html = '';
 
-  // ── Champion (hors classement, meilleur du trimestre)
+  // ── Champion
   if (gChamp) {
     var champAv = gChamp.people.map(function(p){
       var isMe = uid && matchId(p, uid);
-      return '<div style="display:flex;flex-direction:column;align-items:center;gap:4px">' +
-        '<div class="podium-avatar" style="background:#f59e0b;width:54px;height:54px;font-size:17px">' +
+      return '<div style="display:flex;flex-direction:column;align-items:center;gap:6px">' +
+        '<div class="podium-avatar" style="background:#f59e0b;width:56px;height:56px;font-size:17px">' +
           (p.prenom.charAt(0)||'')+(p.nom.charAt(0)||'') +
         '</div>' +
-        '<div style="font-size:12px;font-weight:700;text-align:center">' +
-          capFull(p.prenom)+'<br><span style="font-weight:400;color:var(--muted);font-size:11px">'+p.nom+'</span>' +
-          (isMe ? '<span class="tag-me" style="font-size:9px;margin-left:2px">Moi</span>' : '') +
+        '<div style="text-align:center">' +
+          '<span style="font-size:12px;font-weight:700">'+capFull(p.prenom)+'</span><br>' +
+          '<span style="font-weight:400;color:var(--muted);font-size:10px">'+p.nom+'</span>' +
+          (isMe ? '<span class="tag-me" style="font-size:9px;margin-left:3px">Moi</span>' : '') +
         '</div>' +
         '</div>';
     }).join('');
-    html += '<div style="text-align:center;padding:20px 8px 12px;border-bottom:1px solid var(--border);margin-bottom:16px;">' +
+    html += '<div style="text-align:center;padding:20px 8px 12px;border-bottom:1px solid var(--border);margin-bottom:16px">' +
       '<div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#f59e0b;margin-bottom:10px">👑 Champion du trimestre</div>' +
       '<div style="display:flex;gap:16px;justify-content:center;flex-wrap:wrap">'+champAv+'</div>' +
-      '<div style="font-size:22px;font-weight:900;color:#f59e0b;margin-top:8px">'+gChamp.moy.toFixed(2)+' <span style="font-size:13px;font-weight:400;color:var(--muted)">/ 10</span></div>' +
+      '<div style="font-size:24px;font-weight:900;color:#f59e0b;margin-top:8px">'+gChamp.moy.toFixed(2)+
+        ' <span style="font-size:13px;font-weight:400;color:var(--muted)">/ 10</span></div>' +
       '</div>';
   }
 
-  // ── Podium 1er / 2ème / 3ème
+  // ── Podium 1er/2ème/3ème
+  // Couleurs et tailles par rang
+  var rankCfg = {
+    '1er':  {color:'#94a3b8', avSz:'46px', avFs:'15px', barH:70,  icon:'🥇', rankCls:'rank-1'},
+    '2ème': {color:'#b87333', avSz:'42px', avFs:'14px', barH:50,  icon:'🥈', rankCls:'rank-2'},
+    '3ème': {color:'#6b7280', avSz:'38px', avFs:'13px', barH:36,  icon:'🥉', rankCls:'rank-3'},
+  };
+
   var podiumLevels = [
-    {grp:g1, label:'1er',  icon:'🥇', color:'#94a3b8', h:'70px', sz:'44px', fsz:'15px'},
-    {grp:g2, label:'2ème', icon:'🥈', color:'#b87333', h:'50px', sz:'40px', fsz:'14px'},
-    {grp:g3, label:'3ème', icon:'🥉', color:'#6b7280', h:'36px', sz:'36px', fsz:'13px'},
+    {grp:g1, label:'1er'},
+    {grp:g2, label:'2ème'},
+    {grp:g3, label:'3ème'},
   ].filter(function(x){ return x.grp; });
 
   if (podiumLevels.length) {
-    // Ordre affichage : 2ème, 1er, 3ème
+    // Ordre affichage : 2ème | 1er | 3ème
     var display = [];
-    var p1 = podiumLevels.find(function(x){return x.label==='1er';});
-    var p2 = podiumLevels.find(function(x){return x.label==='2ème';});
-    var p3 = podiumLevels.find(function(x){return x.label==='3ème';});
-    if (p2) display.push(p2);
-    if (p1) display.push(p1);
-    if (p3) display.push(p3);
+    var lv1 = podiumLevels.find(function(x){return x.label==='1er';});
+    var lv2 = podiumLevels.find(function(x){return x.label==='2ème';});
+    var lv3 = podiumLevels.find(function(x){return x.label==='3ème';});
+    if (lv2) display.push(lv2);
+    if (lv1) display.push(lv1);
+    if (lv3) display.push(lv3);
 
     html += '<div class="podium">';
     display.forEach(function(item){
+      var cfg = rankCfg[item.label];
+      var isExAequo = item.grp.people.length > 1;
+
+      // Avatars
       var avHtml = item.grp.people.map(function(p){
-        return '<div class="podium-avatar" style="background:'+item.color+';width:'+item.sz+';height:'+item.sz+';font-size:'+item.fsz+'">'+
-          (p.prenom.charAt(0)||'')+(p.nom.charAt(0)||'')+
+        return '<div class="podium-avatar" style="background:'+cfg.color+';width:'+cfg.avSz+';height:'+cfg.avSz+';font-size:'+cfg.avFs+'">' +
+          (p.prenom.charAt(0)||'')+(p.nom.charAt(0)||'') +
         '</div>';
       }).join('');
+
+      // Noms — un bloc par personne, empilés verticalement
       var namesHtml = item.grp.people.map(function(p){
         var isMe = uid && matchId(p, uid);
-        return capFull(p.prenom)+'<br><small>'+p.nom+'</small>'+(isMe?'<span class="tag-me" style="font-size:9px">Moi</span>':'');
-      }).join('<hr style="border:none;margin:2px 0">');
-      html += '<div class="podium-slot">' +
-        '<div class="podium-rank-lbl">'+item.icon+' '+item.label+'</div>' +
+        return '<div>' +
+          '<span class="p-prenom">'+capFull(p.prenom)+(isMe?'<span class="tag-me p-me">Moi</span>':'')+'</span>' +
+          '<span class="p-nom">'+p.nom+'</span>' +
+        '</div>';
+      }).join('');
+
+      html += '<div class="podium-slot '+cfg.rankCls+'">' +
+        '<div class="podium-rank-lbl">'+cfg.icon+' '+item.label+'</div>' +
         '<div class="podium-avatars">'+avHtml+'</div>' +
+        (isExAequo ? '<div class="podium-exaequo">ex æquo</div>' : '') +
         '<div class="podium-names">'+namesHtml+'</div>' +
         '<div class="podium-score">'+item.grp.moy.toFixed(2)+'</div>' +
-        '<div class="podium-bar" style="height:'+item.h+';background:'+item.color+';opacity:.18"></div>' +
-        '</div>';
+        '<div class="podium-bar" style="height:'+cfg.barH+'px"></div>' +
+      '</div>';
     });
     html += '</div>';
   }
@@ -1643,6 +1669,8 @@ function fetchFromGithub() {
       else { console.log('[GAB Quiz] Fetch ignoré — gData plus récent ('+currentWeeks+' sem > '+newWeeks+' sem)'); }
       try { localStorage.setItem(LS_DATA, JSON.stringify(gData)); } catch(e){}
       console.log('[GAB Quiz] Résultats chargés depuis GitHub ✅');
+      var _lbl = document.getElementById('refreshLabel');
+      if (_lbl) { _lbl.textContent='✅ À jour'; setTimeout(function(){ _lbl.textContent='Rafraîchir'; }, 2500); }
       // Re-render immédiat sans passer par showProperView (évite le flash)
       if (document.getElementById('mainWrap').style.display !== 'none') {
         buildQSelector();
@@ -2421,10 +2449,11 @@ function handleFilesAdmin(files) {
 
   // ══ RAFRAÎCHIR ═════════════════════════════════════════════
   function refreshData() {
-    var btn = document.getElementById('btnRefresh');
-    if (btn) btn.style.opacity = '0.5';
+    var icon  = document.getElementById('refreshIcon');
+    var label = document.getElementById('refreshLabel');
+    if (icon)  { icon.style.transform='rotate(360deg)'; setTimeout(function(){ icon.style.transition='none'; icon.style.transform='rotate(0deg)'; setTimeout(function(){ icon.style.transition='transform 0.7s ease'; },50); },750); }
+    if (label) { label.textContent='Chargement…'; }
     fetchFromGithub();
-    setTimeout(function(){ if (btn) btn.style.opacity = '1'; }, 2000);
   }
 </script>
 
