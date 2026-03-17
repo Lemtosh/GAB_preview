@@ -1488,7 +1488,7 @@ function loadGithubConfig() {
     var s = localStorage.getItem(LS_GITHUB);
     if (s) return JSON.parse(s);
   } catch(e){}
-  return {token:'', repo:'Lemtosh/GAB.', file:'resultats.json'};
+  return {token:'', repo:'Lemtosh/GAB_preview', file:'resultats.json'};
 }
 
 function saveGithubConfig() {
@@ -1531,7 +1531,8 @@ function ghStatus(msg, ok) {
 function fetchFromGithub() {
   var cfg = loadGithubConfig();
   if (!cfg.repo || !cfg.file) return;
-  var url = 'https://raw.githubusercontent.com/' + cfg.repo + '/main/' + cfg.file;
+  // Preview : URL de lecture hardcodée sur GAB_preview
+  var url = 'https://raw.githubusercontent.com/Lemtosh/GAB_preview/main/resultats.json';
   fetch(url + '?nocache=' + Date.now())
     .then(function(r){ if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
     .then(function(data){

@@ -7066,13 +7066,12 @@ window.closeMenu  = function() {};
   // ══ QUIZ BADGES ═══════════════════════════════════════════
   function checkBadgesQuiz() {
     try {
-      var ghCfgRaw = localStorage.getItem('gabQuiz_v2_github');
-      var uidRaw   = localStorage.getItem('gabQuiz_v2_id');
-      if (!ghCfgRaw || !uidRaw) return;
-      var ghCfg = JSON.parse(ghCfgRaw);
-      var uid   = JSON.parse(uidRaw);
-      if (!ghCfg.repo || !ghCfg.file || !uid.nom || !uid.prenom) return;
-      var url = 'https://raw.githubusercontent.com/' + ghCfg.repo + '/main/' + ghCfg.file + '?nc=' + Date.now();
+      var uidRaw = localStorage.getItem('gabQuiz_v2_id');
+      if (!uidRaw) return;
+      var uid = JSON.parse(uidRaw);
+      if (!uid.nom || !uid.prenom) return;
+      // Preview : repo hardcodé — indépendant de la config localStorage
+      var url = 'https://raw.githubusercontent.com/Lemtosh/GAB_preview/main/resultats.json?nc=' + Date.now();
       fetch(url).then(function(r){ return r.ok ? r.json() : null; }).then(function(data){
         if (!data || !data.participants) return;
         var me = data.participants.find(function(p){
