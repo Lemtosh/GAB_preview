@@ -379,6 +379,34 @@ tr.row-disq .r-score{color:var(--danger)!important;}
       <div id="importAdminStatus" style="margin-top:8px;font-size:13px;display:none"></div>
     </div>
 
+    <!-- AJOUTER UN PARTICIPANT MANUELLEMENT -->
+    <div class="param-card" style="margin-bottom:16px">
+      <div class="param-row"><span class="param-lbl">➕ Ajouter un participant manuellement</span></div>
+      <div class="param-desc">Permet d'ajouter un score pour un participant (dérogation, rattrapage, etc.) sur une semaine existante ou nouvelle.</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">
+        <div>
+          <label class="modal-lbl">Prénom</label>
+          <input class="modal-inp" type="text" id="addPartPrenom" placeholder="ex: Marie">
+        </div>
+        <div>
+          <label class="modal-lbl">Nom</label>
+          <input class="modal-inp" type="text" id="addPartNom" placeholder="ex: DUPONT">
+        </div>
+        <div>
+          <label class="modal-lbl">Semaine (jj/mm/aaaa)</label>
+          <input class="modal-inp" type="text" id="addPartWeek" placeholder="ex: 18/03/2026">
+        </div>
+        <div>
+          <label class="modal-lbl">Score (1-10 ou NF)</label>
+          <input class="modal-inp" type="text" id="addPartScore" placeholder="ex: 8 ou NF">
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:10px;align-items:center;flex-wrap:wrap">
+        <button class="param-save-btn" onclick="addParticipantManual()">Ajouter</button>
+        <span id="addPartStatus" style="font-size:12px;display:none"></span>
+      </div>
+    </div>
+
     <!-- SUPPRIMER UNE SEMAINE -->
     <div class="param-card" style="margin-bottom:16px">
       <div class="param-row"><span class="param-lbl">Supprimer une semaine importée</span></div>
@@ -532,7 +560,7 @@ tr.row-disq .r-score{color:var(--danger)!important;}
 
 <script>
 // ══ VERSION ══════════════════════════════════════
-var local_version = 'v0.29.2'; // ← modifier ici à chaque mise à jour
+var local_version = 'v0.29.3'; // ← modifier ici à chaque mise à jour
 
 // ══ CONSTANTS ═════════════════════════════════════
 var ADMIN_NOM    = 'LEMTOSH'; // insensible à la casse pour le matching
@@ -2220,6 +2248,78 @@ function handleFilesAdmin(files) {
   }
   processNext(0);
 }
+
+  // ══ AJOUT MANUEL PARTICIPANT ══════════════════════════════
+  function addParticipantManual() {
+    var prenom = document.getElementById('addPartPrenom').value.trim();
+    var nom    = document.getElementById('addPartNom').value.trim().toUpperCase();
+    var week   = document.getElementById('addPartWeek').value.trim();
+    var scoreRaw = document.getElementById('addPartScore').value.trim().toUpperCase();
+    var statusEl = document.getElementById('addPartStatus');
+
+    // Validation
+    if (!prenom || !nom || !week || !scoreRaw) {
+      statusEl.textContent = '❌ Tous les champs sont requis.';
+      statusEl.style.display = 'block'; statusEl.style.color = 'var(--danger)'; return;
+    }
+    // Valider format date jj/mm/aaaa
+    var dateParts = week.split('/');
+    if (dateParts.length !== 3 || dateParts[0].length < 1 || dateParts[1].length < 1 || dateParts[2].length !== 4) {
+      statusEl.textContent = '❌ Format date invalide (jj/mm/aaaa).';
+      statusEl.style.display = 'block'; statusEl.style.color = 'var(--danger)'; return;
+    }
+    var score = scoreRaw === 'NF' ? 'NF' : parseInt(scoreRaw, 10);
+    if (scoreRaw !== 'NF' && (isNaN(score) || score < 0 || score > 10)) {
+      statusEl.textContent = '❌ Score invalide (0-10 ou NF).';
+      statusEl.style.display = 'block'; statusEl.style.color = 'var(--danger)'; return;
+    }
+    // Normaliser prénom
+    prenom = prenom.replace(/\b\w/g, function(c){ return c.toUpperCase(); })
+                   .replace(/\B\w/g, function(c){ return c.toLowerCase(); });
+
+    var data = loadResults();
+    if (!data) { statusEl.textContent = '❌ Aucun résultat chargé.'; statusEl.style.display='block'; return; }
+
+    // Trouver ou créer le participant
+    var p = data.participants.find(function(x){ return matchId(x, {nom:nom, prenom:prenom}); });
+    if (!p) {
+      p = {nom: nom, prenom: prenom, scores: {}};
+      data.participants.push(p);
+    }
+    p.scores[week] = score;
+
+    // Mettre à jour importsLog si semaine nouvelle
+    if (!data.importsLog) data.importsLog = [];
+    var alreadyLog = data.importsLog.some(function(l){ return l.week === week; });
+    if (!alreadyLog) {
+      data.importsLog.push({week: week, importedAt: new Date().toISOString(), count: 1, label: week});
+    }
+
+    saveResults(data);
+    gData = buildGData(data);
+    try { localStorage.setItem(LS_DATA, JSON.stringify(gData)); } catch(e){}
+
+    statusEl.textContent = '✅ ' + prenom + ' ' + nom + ' — semaine ' + week + ' ajouté(e).';
+    statusEl.style.color = 'var(--success)';
+    statusEl.style.display = 'block';
+
+    // Reset champs
+    document.getElementById('addPartPrenom').value = '';
+    document.getElementById('addPartNom').value = '';
+    document.getElementById('addPartWeek').value = '';
+    document.getElementById('addPartScore').value = '';
+
+    buildQSelector();
+    renderClassement(curQ);
+    renderAdmin();
+    populateWeekDelSelect();
+
+    // Auto-push GitHub
+    var cfg = loadGithubConfig();
+    if (cfg && cfg.token) {
+      setTimeout(function(){ pushToGithub(); }, 400);
+    }
+  }
 
   // ══ SUPPRESSION SEMAINE ════════════════════════════════════
   function populateWeekDelSelect() {
