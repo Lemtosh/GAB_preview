@@ -2110,8 +2110,7 @@ function handleFileAdmin(file) {
     var status = document.getElementById('weekDelStatus');
     var week   = sel ? sel.value : '';
     if (!week) { weekDelStatus('⚠️ Sélectionne une semaine', false); return; }
-    if (!confirm('Supprimer toutes les données de la semaine du ' + week + ' ?
-Cette action re-poussera le JSON vers GitHub.')) return;
+    if (!confirm('Supprimer toutes les données de la semaine du ' + week + ' ? Cette action re-poussera le JSON vers GitHub.')) return;
 
     var raw = loadResults() || {};
     if (!raw.participants) { weekDelStatus('❌ Aucune donnée locale', false); return; }
