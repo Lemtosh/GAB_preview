@@ -532,7 +532,7 @@ tr.row-disq .r-score{color:var(--danger)!important;}
 
 <script>
 // ══ VERSION ══════════════════════════════════════
-var local_version = 'v0.29.1'; // ← modifier ici à chaque mise à jour
+var local_version = 'v0.29.2'; // ← modifier ici à chaque mise à jour
 
 // ══ CONSTANTS ═════════════════════════════════════
 var ADMIN_NOM    = 'LEMTOSH'; // insensible à la casse pour le matching
@@ -1615,8 +1615,17 @@ function fetchFromGithub() {
       else { console.log('[GAB Quiz] Fetch ignoré — gData plus récent ('+currentWeeks+' sem > '+newWeeks+' sem)'); }
       try { localStorage.setItem(LS_DATA, JSON.stringify(gData)); } catch(e){}
       console.log('[GAB Quiz] Résultats chargés depuis GitHub ✅');
-      // Toujours appeler showProperView pour garantir l'affichage correct
-      showProperView();
+      // Re-render immédiat sans passer par showProperView (évite le flash)
+      if (document.getElementById('mainWrap').style.display !== 'none') {
+        buildQSelector();
+        renderClassement(curQ);
+        renderHistory();
+        if (admin) { renderAdmin(); renderStats(); }
+        var _isMgr = isManager();
+        if (admin || _isMgr) renderEquipe();
+      } else {
+        showProperView();
+      }
     })
     .catch(function(err){
       console.warn('[GAB Quiz] GitHub fetch failed, fallback localStorage:', err.message);
