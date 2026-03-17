@@ -506,7 +506,7 @@ tr.row-disq .r-score{color:var(--danger)!important;}
 
 <script>
 // ══ VERSION ══════════════════════════════════════
-var local_version = 'v0.24.0'; // ← modifier ici à chaque mise à jour
+var local_version = 'v0.25.0'; // ← modifier ici à chaque mise à jour
 
 // ══ CONSTANTS ═════════════════════════════════════
 var ADMIN_NOM    = 'LEMTOSH'; // insensible à la casse pour le matching
@@ -1541,8 +1541,21 @@ function fetchFromGithub() {
           return {nom:p.nom, prenom:p.prenom, scores:p.scores||{}};
         });
       }
-      // v0.24 : le JSON GitHub est la seule source de vérité — pas de merge depuis LS
+      // v0.25 : le JSON GitHub est la seule source de vérité
       if (!data.importsLog) data.importsLog = [];
+      if (!data.config) data.config = {};
+      // Sync LS depuis config GitHub pour que les param-inp soient cohérents
+      try {
+        var _p = {
+          seuilZero:       data.config.seuilZero       != null ? data.config.seuilZero       : DEFAULT_PARAMS.seuilZero,
+          seuilDisq:       data.config.seuilDisq       != null ? data.config.seuilDisq       : DEFAULT_PARAMS.seuilDisq,
+          exceptSeuilZero: data.config.exceptSeuilZero || [],
+          exceptSeuilDisq: data.config.exceptSeuilDisq || []
+        };
+        localStorage.setItem(LS_PARAMS,    JSON.stringify(_p));
+        localStorage.setItem(LS_BLACKLIST, JSON.stringify(data.config.blacklist || []));
+        localStorage.setItem(LS_MANAGERS,  JSON.stringify(data.config.managers  || []));
+      } catch(e){}
       saveResults(data);
       gData = buildGData(data);
       try { localStorage.setItem(LS_DATA, JSON.stringify(gData)); } catch(e){}
@@ -1579,7 +1592,20 @@ function pushToGithub() {
   if (!cfg.token) { ghStatus('❌ Token manquant', false); return; }
   // Utiliser gData en priorité (contient importsLog à jour), fallback localStorage
   var raw = loadResults() || {};
+  var _params    = loadParams();
+  var _blacklist = loadBlacklist();
+  var _managers  = loadManagers();
+  var _cfg = Object.assign({}, (gData && gData.config) || raw.config || {}, {
+    seuilZero:       _params.seuilZero,
+    seuilDisq:       _params.seuilDisq,
+    exceptSeuilZero: _params.exceptSeuilZero,
+    exceptSeuilDisq: _params.exceptSeuilDisq,
+    blacklist:       _blacklist,
+    managers:        _managers
+  });
   var data = {
+    version: '0.25',
+    annee:   new Date().getFullYear(),
     participants: (gData ? gData.participants.map(function(p){
       var scores = {};
       ['T1','T2','T3','T4'].forEach(function(q){
@@ -1591,7 +1617,7 @@ function pushToGithub() {
       });
       return {nom:p.nom, prenom:p.prenom, scores:scores};
     }) : raw.participants) || [],
-    config: (gData && gData.config) || raw.config || null,
+    config: _cfg,
     importsLog: (gData && gData.importsLog && gData.importsLog.length)
                   ? gData.importsLog
                   : (raw.importsLog || [])
