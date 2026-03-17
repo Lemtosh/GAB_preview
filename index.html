@@ -2392,7 +2392,7 @@ a.topNavBtn:focus {
   <button id="btnUpdateNow" type="button" title="Recharge la page pour charger la dernière version">Mettre à jour</button>
 </div>
 </div>
-<div id="sgpBanner" onclick="window.location.href='https://lemtosh.github.io/GAB./GAB_SGP.html'" title="Ouvrir le Gestionnaire SGP">
+<div id="sgpBanner" onclick="window.location.href='https://lemtosh.github.io/GAB_preview/GAB_SGP_preview.html'" title="Ouvrir le Gestionnaire SGP">
   <button class="sgpBannerClose" onclick="event.stopPropagation();closeSGPBanner()" title="Fermer">✕</button>
   <span id="sgpBannerText"></span>
 </div>
@@ -2849,7 +2849,7 @@ a.topNavBtn:focus {
 </div>
 <div aria-live="polite" class="tooltip" id="crmTooltip" role="dialog"></div>
 <script>
-    const LOCAL_VERSION = "1.3.33";
+    const LOCAL_VERSION = "1.3.32";
     const VERSION_URL = "https://gist.githubusercontent.com/Lemtosh/ac7fc859fe26f28a17f86fa73c4a4e95/raw/version.json";
     const CHANGELOG_URL = "https://raw.githubusercontent.com/Lemtosh/GAB./refs/heads/main/CHANGELOG.md";
   const CHANGELOG_INLINE = `# Changelog — GAB. Guide Antécédents Bonus-Malus
@@ -6465,7 +6465,7 @@ document.addEventListener('DOMContentLoaded',function(){
       const nb = info.pending;
       textEl.innerHTML = '📋 <strong>' + nb + ' retour' + (nb > 1 ? 's' : '') + ' SGP en attente</strong>'
         + formatDeadlineFR(info.deadline)
-        + ' &nbsp;<a href="https://lemtosh.github.io/GAB./GAB_SGP.html" onclick="event.stopPropagation()" style="color:var(--link,#0b3d91);font-weight:700;">Ouvrir →</a>';
+        + ' &nbsp;<a href="https://lemtosh.github.io/GAB_preview/GAB_SGP_preview.html" onclick="event.stopPropagation()" style="color:var(--link,#0b3d91);font-weight:700;">Ouvrir →</a>';
       banner.style.display = 'block';
     }
 
@@ -7080,8 +7080,6 @@ window.closeMenu  = function() {};
                  p.prenom.toLowerCase() === uid.prenom.toLowerCase();
         });
         if (!me || !me.scores) return;
-
-        // Scores numériques triés par date
         var scoreEntries = Object.keys(me.scores).map(function(d){
           return { date: d, score: me.scores[d] };
         }).filter(function(e){ return typeof e.score === 'number'; })
@@ -7089,20 +7087,15 @@ window.closeMenu  = function() {};
             var pa=a.date.split('/'), pb=b.date.split('/');
             return new Date(pa[2],pa[1]-1,pa[0]) - new Date(pb[2],pb[1]-1,pb[0]);
           });
-
         var totalQuiz = scoreEntries.length;
         var sum       = scoreEntries.reduce(function(s,e){ return s + e.score; }, 0);
         var moyAnn    = totalQuiz ? sum / totalQuiz : null;
         var has10     = scoreEntries.some(function(e){ return e.score === 10; });
-
-        // Streak 10/10 consécutifs
         var maxStreak10 = 0, curStreak10 = 0;
         scoreEntries.forEach(function(e){
           if (e.score === 10) { curStreak10++; maxStreak10 = Math.max(maxStreak10, curStreak10); }
           else { curStreak10 = 0; }
         });
-
-        // Assidu : au moins un trimestre entier sans NF (min 2 semaines)
         var QS_MONTHS = { T1:[1,2,3], T2:[4,5,6], T3:[7,8,9], T4:[10,11,12] };
         var assidu = false;
         ['T1','T2','T3','T4'].forEach(function(q){
@@ -7115,7 +7108,6 @@ window.closeMenu  = function() {};
           var hasNF = qDates.some(function(d){ return me.scores[d] === 'NF'; });
           if (!hasNF) assidu = true;
         });
-
         var store = _getBadgeStore(), fresh = [];
         [
           { id:'quiz_first',    ok: totalQuiz >= 1 },
@@ -7249,7 +7241,7 @@ window.closeMenu  = function() {};
       };
     }
     setTimeout(checkBadges,600); // vérif initiale au chargement (refs déjà existantes)
-    setTimeout(checkBadgesQuiz, 1200); // badges Quiz au chargement
+    setTimeout(checkBadgesQuiz, 1200); // badges Quiz
   });
 
   /* ==================== BADGES SGP (sgpgraded) ==================== */
