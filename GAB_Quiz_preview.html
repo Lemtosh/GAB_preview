@@ -343,7 +343,7 @@ tr.row-disq .r-score{color:var(--danger)!important;}
             <th>Participant</th>
             <th>Moyenne</th>
             <th>Quiz faits</th>
-            <th style="color:var(--danger)">Non faits</th>
+            <th style="color:var(--danger)" id="thNonFaits">Non faits</th>
           </tr>
         </thead>
         <tbody id="rankBody"></tbody>
@@ -532,7 +532,7 @@ tr.row-disq .r-score{color:var(--danger)!important;}
 
 <script>
 // ══ VERSION ══════════════════════════════════════
-var local_version = 'v0.27.0'; // ← modifier ici à chaque mise à jour
+var local_version = 'v0.28.0'; // ← modifier ici à chaque mise à jour
 
 // ══ CONSTANTS ═════════════════════════════════════
 var ADMIN_NOM    = 'LEMTOSH'; // insensible à la casse pour le matching
@@ -991,6 +991,12 @@ function renderClassement(q) {
 
   renderPodium(normal, q);
 
+  // Masquer colonne NF pour utilisateurs standard
+  var _isManager = isManager();
+  var showNF = admin || _isManager;
+  var thNF = document.getElementById('thNonFaits');
+  if (thNF) thNF.style.display = showNF ? '' : 'none';
+
   var tbody = document.getElementById('rankBody');
   tbody.innerHTML = '';
   if (!normal.length && !disq.length) {
@@ -1022,7 +1028,7 @@ function renderClassement(q) {
       '<td class="r-name">' + capFull(p.prenom) + ' ' + p.nom + (isMe ? '<span class="tag-me">Moi</span>' : '') + '</td>' +
       '<td class="r-score">' + (moy !== null ? moy.toFixed(2) : '—') + '</td>' +
       '<td class="r-nf-cell">' + (p.quarters[q].nbQuiz || '—') + '</td>' +
-      '<td class="r-nf-cell" style="color:var(--danger)">' + (p.quarters[q].nbNonFait || 0) + '</td>';
+      '<td class="r-nf-cell" style="color:var(--danger);display:' + (showNF ? '' : 'none') + '">' + (p.quarters[q].nbNonFait || 0) + '</td>';
     tbody.appendChild(tr);
   });
 
@@ -1043,7 +1049,7 @@ function renderClassement(q) {
           '<span class="tag-disq">DISQUALIFIÉ</span></td>' +
         '<td class="r-score">' + (moy !== null ? moy.toFixed(2) : '—') + '</td>' +
         '<td class="r-nf-cell">' + (p.quarters[q].nbQuiz || '—') + '</td>' +
-        '<td class="r-nf-cell" style="color:var(--danger)">' + (p.quarters[q].nbNonFait || 0) + '</td>';
+        '<td class="r-nf-cell" style="color:var(--danger);display:' + (showNF ? '' : 'none') + '">' + (p.quarters[q].nbNonFait || 0) + '</td>';
       tbody.appendChild(tr);
     });
   }
@@ -1326,7 +1332,10 @@ document.getElementById('identModal').addEventListener('click', function(e){
 });
 
 function confirmId() {
-  var prenom = document.getElementById('inpPrenom').value.trim();
+  var _prenomRaw = document.getElementById('inpPrenom').value.trim();
+  // Normaliser : chaque mot avec 1ère lettre maj (ex: "marie lou" → "Marie Lou")
+  var prenom = _prenomRaw.replace(/\b\w/g, function(c){ return c.toUpperCase(); })
+                          .replace(/\B\w/g, function(c){ return c.toLowerCase(); });
   var nom    = document.getElementById('inpNom').value.trim().toUpperCase();
   var errEl  = document.getElementById('modalErr');
   errEl.style.display='none';
@@ -1682,7 +1691,16 @@ function pushToGithub() {
     });
   })
   .then(function(r){ if (!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
-  .then(function(){ ghStatus('✅ Push réussi !', true); })
+  .then(function(){
+    ghStatus('✅ Push réussi — purge cache...', true);
+    // Purger le cache jsDelivr pour que fetchFromGithub voie les nouvelles données immédiatement
+    fetch('https://purge.jsdelivr.net/gh/Lemtosh/GAB_preview@main/resultats.json')
+      .catch(function(){}) // silencieux si purge échoue
+      .finally(function(){
+        ghStatus('✅ Push réussi !', true);
+        setTimeout(fetchFromGithub, 1500); // refetch après purge
+      });
+  })
   .catch(function(e){ ghStatus('❌ ' + e.message, false); });
 }
 
@@ -2223,8 +2241,14 @@ function handleFilesAdmin(files) {
       })
       .then(function(r){ if (!r.ok) throw new Error('HTTP '+r.status); return r.json(); })
       .then(function(){
-        weekDelStatus('✅ Semaine '+week+' supprimée et JSON mis à jour', true);
-        renderAdmin(); renderClassement(curQ); renderHistory();
+        weekDelStatus('✅ Semaine '+week+' supprimée — purge cache...', true);
+        fetch('https://purge.jsdelivr.net/gh/Lemtosh/GAB_preview@main/resultats.json')
+          .catch(function(){})
+          .finally(function(){
+            weekDelStatus('✅ Semaine '+week+' supprimée et JSON mis à jour', true);
+            setTimeout(fetchFromGithub, 1500);
+            renderAdmin(); renderClassement(curQ); renderHistory();
+          });
       })
       .catch(function(e){ weekDelStatus('❌ '+e.message, false); });
   }
