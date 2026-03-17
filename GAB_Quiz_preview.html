@@ -532,7 +532,7 @@ tr.row-disq .r-score{color:var(--danger)!important;}
 
 <script>
 // ══ VERSION ══════════════════════════════════════
-var local_version = 'v0.28.0'; // ← modifier ici à chaque mise à jour
+var local_version = 'v0.29.0'; // ← modifier ici à chaque mise à jour
 
 // ══ CONSTANTS ═════════════════════════════════════
 var ADMIN_NOM    = 'LEMTOSH'; // insensible à la casse pour le matching
@@ -1645,15 +1645,20 @@ function pushToGithub() {
     annee:   new Date().getFullYear(),
     participants: (gData ? gData.participants.map(function(p){
       var scores = {};
+      // Trier les semaines par date chronologique
+      var allWeeks = [];
       ['T1','T2','T3','T4'].forEach(function(q){
         if (p.quarters && p.quarters[q]) {
-          p.quarters[q].weeks.forEach(function(w){
-            scores[w.date] = w.score === 'absent' ? 'NF' : w.score;
-          });
+          p.quarters[q].weeks.forEach(function(w){ allWeeks.push(w); });
         }
       });
+      allWeeks.sort(function(a,b){
+        var pa=a.date.split('/'), pb=b.date.split('/');
+        return new Date(pa[2],pa[1]-1,pa[0]) - new Date(pb[2],pb[1]-1,pb[0]);
+      });
+      allWeeks.forEach(function(w){ scores[w.date] = w.score === 'absent' ? 'NF' : w.score; });
       return {nom:p.nom, prenom:p.prenom, scores:scores};
-    }) : raw.participants) || [],
+    }).sort(function(a,b){ return a.nom.localeCompare(b.nom); }) : raw.participants) || [],
     config: _cfg,
     importsLog: (gData && gData.importsLog && gData.importsLog.length)
                   ? gData.importsLog
@@ -1676,7 +1681,15 @@ function pushToGithub() {
   .then(function(existing){
     var sha = existing.sha || '';
     var body = {
-      message: 'GAB Quiz — mise à jour résultats ' + new Date().toLocaleDateString('fr-FR'),
+      message: (function(){
+      var log = (gData && gData.importsLog) ? gData.importsLog : [];
+      if (log.length) {
+        var weeks = log.map(function(l){ return l.week || l.label || ''; })
+                       .filter(function(w){ return w; });
+        return 'GAB Quiz — import semaine' + (weeks.length > 1 ? 's' : '') + ' ' + weeks.join(', ');
+      }
+      return 'GAB Quiz — mise à jour résultats ' + new Date().toLocaleDateString('fr-FR');
+    })(),
       content: content
     };
     if (sha) body.sha = sha;
